@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# Nasourcováním ~/.bash_profile zajistíme, že ~/.bash_login bude dělat to samé co ~/.bash_profile.
+# Zároveň víme (viz. komentář u ~/.bash_profile), že ~/.bash_profile je ekvivalentní ~/.bashrc,
+# a tedy nyní jsou si všechny tři soubory (~/.bashrc, ~/.bash_profile, ~/.bash_login) ekvivalentní
+if [[ -f ~/.bash_profile ]]; then
+    . ~/.bash_profile
+fi
