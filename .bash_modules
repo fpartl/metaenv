@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# Enable custom Python support
+enable_python() {
+    module add python
+}
+
+# Enable custom Conda support
+BASE_CONDA_ENV_ENABLE=1
+BASE_CONDA_ENV_PYTHON="3.9"
+BASE_CONDA_ENV_NAME="base-${BASE_CONDA_ENV_PYTHON}"
+enable_conda() {
+    module add conda-modules
+
+    if [[ $BASE_CONDA_ENV_ENABLE -eq 1 ]]; then
+        echo "Activating conda env ${BASE_CONDA_ENV_NAME}..."
+
+        base_conda_env_exitsts=$(conda env list -q | grep $BASE_CONDA_ENV_NAME | wc -l)
+        if [[ $base_conda_env_exitsts -ne 1 ]]; then
+            echo "Conda env ${BASE_CONDA_ENV_NAME} does not exists... creating now!"
+
+            conda create --name $BASE_CONDA_ENV_NAME --no-default-packages python=$BASE_CONDA_ENV_PYTHON
+            conda activate $BASE_CONDA_ENV_NAME
+
+            # Install useful packages
+            pip install git+https://github.com/fpartl/metarunner.git
+	    pip install funkybob
+        else
+            conda activate $BASE_CONDA_ENV_NAME
+        fi
+    fi
+}

@@ -2,11 +2,7 @@ OVERRIDE_KRB_FILE="FILE:/tmp/krb5cc_$(id -u)"
 OVERRIDE_HOME=""
 
 MODULE_PYTHON_ENABLE=1
-
-MODULE_CONDA_ENABLE=1
-BASE_CONDA_ENV_ENABLE=1
-BASE_CONDA_ENV_NAME="fpartl-base"
-BASE_CONDA_ENV_PYTHON="3.10"
+MODULE_CONDA_ENABLE=0
 
 ### Metacentrum recommendation ###############################################################
 # from https://wiki.metacentrum.cz/wiki/U%C5%BEivatel:Mmares/Co_si_d%C3%A1t_do_.bashrc%3F
@@ -32,51 +28,35 @@ cd_modulefiles() {
 }
 
 ### My initialization scripts ################################################################
+if [[ -f ~/.bash_modules ]]; then
+    source ~/.bash_modules
+fi
+
+if [[ -f ~/.bash_functions ]]; then
+    source ~/.bash_functions
+fi
+
 # Set Kerberos ticket (because of VS Code remote extension)
 if [[ ! -z $OVERRIDE_KRB_FILE ]]; then
-    echo "Setting KRB5CCNAME=${OVERRIDE_KRB_FILE}!"
+    echo "exporting KRB5CCNAME=${OVERRIDE_KRB_FILE}"
     export KRB5CCNAME=$OVERRIDE_KRB_FILE
 fi
 
 if [[ ! -z $OVERRIDE_HOME ]]; then
-    echo "Setting HOME=${OVERRIDE_HOME}"
+    echo "exporting HOME=${OVERRIDE_HOME}"
     export HOME=$OVERRIDE_HOME
 fi
 
+echo
+
 # Activate Python module
 if [[ $MODULE_PYTHON_ENABLE -eq 1 ]]; then
-    module add python
+    echo "Module python added"
+    enable_python
 fi
 
 # Use user based Conda environment
 if [[ $MODULE_CONDA_ENABLE -eq 1 ]]; then
-    module add conda-modules
-
-    if [[ $BASE_CONDA_ENV_ENABLE -eq 1 ]]; then
-        base_conda_env_exitsts=$(conda env list -q | grep $BASE_CONDA_ENV_NAME | wc -l)
-        if [[ $base_conda_env_exitsts -ne 1 ]]; then
-            echo "Conda env ${BASE_CONDA_ENV_NAME} does not exists... creating now!"
-
-            conda create --name $BASE_CONDA_ENV_NAME --no-default-packages python=$BASE_CONDA_ENV_PYTHON
-            conda activate $BASE_CONDA_ENV_NAME
-
-            # Install useful packages
-            pip install git+https://github.com/fpartl/metarunner.git
-        else
-            conda activate $BASE_CONDA_ENV_NAME
-        fi
-    fi
+    echo "Module conda-modules added"
+    enable_conda
 fi
-
-# Enable custom Docker support
-docker-to-sif() {
-    if [[ ! -f $1 ]]; then
-        echo "docker-to-sif <docker-image-file>"
-        return 1
-    fi
-
-    singularity_file="${1}.sif"
-    singularity build "${singularity_file}" "docker-archive://${1}"
-
-    echo "Run with: singularity shell $(realpath $singularity_file)"
-}
