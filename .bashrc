@@ -1,8 +1,9 @@
 OVERRIDE_KRB_FILE="FILE:/tmp/krb5cc_$(id -u)"
-OVERRIDE_HOME=""
+OVERRIDE_HOME="" # not really tested feature...
 
 MODULE_PYTHON_ENABLE=1
-MODULE_CONDA_ENABLE=0
+MODULE_CONDA_ENABLE=1
+MODULE_JULIA_ENABLE=1
 
 ### Metacentrum recommendation ###############################################################
 # from https://wiki.metacentrum.cz/wiki/U%C5%BEivatel:Mmares/Co_si_d%C3%A1t_do_.bashrc%3F
@@ -28,6 +29,8 @@ cd_modulefiles() {
 }
 
 ### My initialization scripts ################################################################
+. /software/modules/init
+
 if [[ -f ~/.bash_modules ]]; then
     source ~/.bash_modules
 fi
@@ -60,3 +63,11 @@ if [[ $MODULE_CONDA_ENABLE -eq 1 ]]; then
     echo "Module conda-modules added"
     enable_conda
 fi
+
+# Activate Julia module
+if [[ $MODULE_JULIA_ENABLE -eq 1 ]]; then
+    echo "Module julia added"
+    enable_julia
+fi
+
+export PATH="/storage/plzen1/home/$(whoami)/vscode-server:${PATH}"

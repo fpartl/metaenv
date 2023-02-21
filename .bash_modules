@@ -6,27 +6,35 @@ enable_python() {
 }
 
 # Enable custom Conda support
-BASE_CONDA_ENV_ENABLE=1
-BASE_CONDA_ENV_PYTHON="3.9"
-BASE_CONDA_ENV_NAME="base-${BASE_CONDA_ENV_PYTHON}"
 enable_conda() {
     module add conda-modules
+}
 
-    if [[ $BASE_CONDA_ENV_ENABLE -eq 1 ]]; then
-        echo "Activating conda env ${BASE_CONDA_ENV_NAME}..."
+enable_julia() {
+    module load julia/julia-1.7.0-gcc-8.3.0-jmtninw
+}
 
-        base_conda_env_exitsts=$(conda env list -q | grep $BASE_CONDA_ENV_NAME | wc -l)
-        if [[ $base_conda_env_exitsts -ne 1 ]]; then
-            echo "Conda env ${BASE_CONDA_ENV_NAME} does not exists... creating now!"
+BASE_CONDA_ENV_PYTHON="3.9"
+BASE_CONDA_ENV_NAME="base-${BASE_CONDA_ENV_PYTHON}"
+enable_conda_base() {
+    if ! command -v conda &> /dev/null; then
+        enable_conda 
+    fi
 
-            conda create --name $BASE_CONDA_ENV_NAME --no-default-packages python=$BASE_CONDA_ENV_PYTHON
-            conda activate $BASE_CONDA_ENV_NAME
+    echo "Activating conda env ${BASE_CONDA_ENV_NAME}..."
 
-            # Install useful packages
-            pip install git+https://github.com/fpartl/metarunner.git
-	    pip install funkybob
-        else
-            conda activate $BASE_CONDA_ENV_NAME
-        fi
+    base_conda_env_exitsts=$(conda env list -q | grep $BASE_CONDA_ENV_NAME | wc -l)
+    if [[ $base_conda_env_exitsts -ne 1 ]]; then
+        echo "Conda env ${BASE_CONDA_ENV_NAME} does not exists... creating now!"
+
+        conda create \
+            --name $BASE_CONDA_ENV_NAME \
+            --no-default-packages \
+            --file ~/.conda_base_requirements.txt \
+            python=$BASE_CONDA_ENV_PYTHON
+
+        conda activate $BASE_CONDA_ENV_NAME
+    else
+        conda activate $BASE_CONDA_ENV_NAME
     fi
 }

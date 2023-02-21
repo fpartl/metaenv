@@ -1,0 +1,8 @@
+git+https://github.com/fpartl/metarunner.git
+funkybob
+tqdm
+numpy
+xmltodict
+plotly
+pandas
+kaleido

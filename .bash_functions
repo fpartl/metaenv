@@ -28,19 +28,23 @@ is-run() {
     cpus=$([[ $1 =~ ^[0-9]+$ ]]   && echo $1          || echo "")
     rams=$([[ $2 =~ ^[0-9]+$ ]]   && echo "$2gb"      || echo "")
     scrt=$([[ $3 =~ ^[0-9]+$ ]]   && echo "$3gb"      || echo "")
-    city=$([[ ! -z $4 ]]          && echo ":$4=True"  || echo "")
+    gpus=$([[ $4 =~ ^[0-9]+$ ]]   && echo "$4"        || echo "")
+    city=$([[ ! -z $5 ]]          && echo ":$5=True"  || echo "")
+    queue=$([[ $gpus -eq 0 ]]     && echo "default@meta-pbs.metacentrum.cz" || echo "gpu@meta-pbs.metacentrum.cz")
 
-    if [[ -z $cpus ]] || [[ -z $rams ]] || [[ -z $scrt ]]; then
+    if [[ -z $cpus ]] || [[ -z $rams ]] || [[ -z $scrt ]] || [[ -z $gpus ]]; then
         echo $cpus $rams $scrt
-        echo "is-run <cpus> <rams-gb> <scrt-gb> [city]"
+        echo "is-run <cpus> <rams-gb> <scrt-gb> <gpus> [city]"
         return 1
     fi
 
     qsub_command="
         qsub -I \
             -p +250 \
-            -l walltime=3:0:0 -q default@meta-pbs.metacentrum.cz \
-            -l select=1:ncpus=${cpus}:mem=${rams}:scratch_local=${scrt}${city}
+            -v HOME=/storage/plzen1/home/$(whoami) \
+            -l walltime=6:0:0 -q ${queue} \
+            -l select=1:ncpus=${cpus}:ngpus=${gpus}:mem=${rams}:scratch_ssd=${scrt}${city} \
+            -- /bin/bash -c \"export HOME=/storage/plzen1/home/$(whoami) && cd ~ && /bin/bash\"
     "
 
     read -p "$(echo "${qsub_command}... proced? (y/n):" | xargs) " -n 1 -r
@@ -50,10 +54,26 @@ is-run() {
     fi
 }
 
-is-1-1-1-plzen() {
-    is-run 1 1 1 plzen
+is-1-8-16-0-plzen() {
+    is-run 1 8 16 0 plzen
 }
 
-is-4-16-20-plzen() {
-    is-run 4 16 20 plzen
+is-2-16-32-0-plzen() {
+    is-run 2 16 32 0 plzen
+}
+
+is-4-16-32-0-plzen() {
+    is-run 4 16 32 0 plzen
+}
+
+is-2-32-32-1() {
+    is-run 2 32 32 1
+}
+
+is-3-32-32-0() {
+    is-run 3 32 32 0
+}
+
+is-2-32-32-0() {
+    is-run 2 32 32 0
 }
