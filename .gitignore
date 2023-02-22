@@ -1,0 +1,15 @@
+*
+
+!.gitignore
+
+!.bashrc
+!.bash_profile
+!.bash_login
+!.bash_modules
+!.bash_functions
+
+# This is weird (but working)
+!.ssh
+!.ssh/config
+
+!.conda_base_requirements.txt
