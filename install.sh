@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ### CONFIGURATIONS
-INSTALL_PATH="/home/frantisek/Plocha/home"  #${HOME}
+INSTALL_PATH=${HOME}
 INSTALL_SCRIPTS=(
     ".bash_functions"
     ".bash_login"
@@ -26,7 +26,7 @@ while true; do
     install_path=${INSTALL_PATH}
 
     read \
-        -p "What home directory do you want to install scripts? (${install_path}):" \
+        -p "In which home directory do you want to install scripts? (${install_path}):" \
         user_install_path
 
     if [[ ! -z ${user_install_path} ]]; then
@@ -41,7 +41,7 @@ while true; do
 done
 
 # Prompt user for confirmation
-echo -e "\033[1;31mWarning! Works only with home directories in \"/storage/plzen1/home/...\"\033[0m"
+echo -e "\033[1;31mWarning! Works only with home directory in \"/storage/plzen1/home/...\" for now. :-/\033[0m"
 confirm_prompt "Are you sure you want to proceed?"
 if [[ $? -ne 0 ]]; then
     echo "See you later then..."
