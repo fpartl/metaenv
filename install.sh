@@ -3,6 +3,7 @@
 ### CONFIGURATIONS
 INSTALL_PATH=${HOME}
 INSTALL_SCRIPTS=(
+    ".metaenv_user_conf"
     ".bash_functions"
     ".bash_login"
     ".bash_modules"
@@ -13,7 +14,8 @@ INSTALL_SCRIPTS=(
 
 ### SCRIPT BODY
 confirm_prompt() {
-    read -p "${1} (y/n) " -n 1 -r; echo
+    read -p "${1} (y/n) " -n 1 -r
+    echo
     [[ $REPLY =~ ^[Yy]$ ]]
 }
 
@@ -47,7 +49,7 @@ if [[ $? -ne 0 ]]; then
 fi
 
 # Create symlinks (remove existing symlinks)
-echo "Creating symlinks now..."
+echo "Creating symlinks..."
 for script in ${INSTALL_SCRIPTS[@]}; do
     symlink_name="${INSTALL_PATH}/${script}"
     script_name="${script_dir}/${script}"

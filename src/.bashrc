@@ -1,21 +1,3 @@
-### User configurations ######################################################################
-# Add your favourie software to the PATH variable
-export PATH="${HOME}/vscode-server:${PATH}"
-export PATH="${HOME}/tools/julia-1.8.5/bin:${PATH}"
-
-# Rewrite environment variables
-ENVIRONMENT_VARS=(
-    KRB5CCNAME="FILE:/tmp/krb5cc_$(id -u)"
-)
-
-# Automatically initialize frequently used modules
-# Warning! List of available modules seems to vary by Metacenter's node...
-INITIALIZED_MODULES=(
-    python
-    conda-modules
-    # julia-1.5.3-gcc
-)
-
 ### Metacenter's recommendation ###############################################################
 # from https://wiki.metacentrum.cz/wiki/U%C5%BEivatel:Mmares/Co_si_d%C3%A1t_do_.bashrc%3F
 
@@ -40,23 +22,44 @@ cd_modulefiles() {
 }
 
 ### My initialization scripts ################################################################
+# Load user defined configuration arrays
+if [[ -f ~/.metaenv_user_conf ]]; then
+    source ~/.metaenv_user_conf
+fi
+
 # Rewrite environment variables
 if [[ ! -z ${ENVIRONMENT_VARS} ]]; then
     echo "Exporting environment variables..."
 
-    for var_line in ${ENVIRONMENT_VARS[@]}; do
-        IFS='=' read -ra var_line_arr <<< ${var_line}
+    for ((i=0; i<${#ENVIRONMENT_VARS[@]}; i++)); do
+        IFS='=' read -ra var_line_arr <<< "${ENVIRONMENT_VARS[$i]}"
         var_name=${var_line_arr[0]}
         var_value=${var_line_arr[1]}
 
-        echo -n "exporting ${var_name}=${var_value}... "
-        export_command_output=$((export ${var_name}=${var_value}) 2>&1)
+        echo -n "exporting ${var_name}=\"${var_value}\"... "
+        export ${var_name}="${var_value}"
 
-        if [[ -z ${export_command_output} ]]; then
+        if [[ ${!var_name} == ${var_value} ]]; then
             echo -e "\033[0;32mok\033[0m"
         else
-            echo -e "\033[0;31mnok!\033[0m (error: ${export_command_output})"
-            echo -e ""
+            echo -e "\033[0;31mnok!\033[0m"
+        fi
+    done
+fi
+
+# Add software to PATH
+if [[ ! -z ${EXTRA_PATH_DIRS} ]]; then
+    echo
+    echo "Adding items to PATH variable..."
+
+    for ((i=0; i<${#EXTRA_PATH_DIRS[@]}; i++)); do
+        echo -n "adding \"${EXTRA_PATH_DIRS[$i]}\"... "
+        export PATH="${EXTRA_PATH_DIRS[$i]}:${PATH}"
+
+        if [[ "${PATH}" == *"${path}"* ]]; then
+            echo -e "\033[0;32mok\033[0m"
+        else
+            echo -e "\033[0;31mnok!\033[0m"
         fi
     done
 fi

@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# This script contains user configurations.
+# Modify the following array according to your needs.
+
+# Add your favourie software to the PATH variable
+EXTRA_PATH_DIRS=(
+    # for example:
+    /storage/plzen1/home/your_username/tools/julia-1.8.5/bin
+)
+
+# Rewrite environment variables
+ENVIRONMENT_VARS=(
+    # for example:
+    SAMPLE_TEST_VARIABLE="It works!"
+)
+
+# Automatically initialize frequently used modules
+# Warning! List of available modules varies by Metacenter's node...
+INITIALIZED_MODULES=(
+    # for example:
+    conda-modules
+)
