@@ -39,3 +39,15 @@ FAVOURITE_IS_CONFIGS=(
     "3 32 32 0"
     "4 16 32 0 plzen"
 )
+
+# Base conda environment configuration
+# You can create your base conda environment using `enable_conda_base` function from `.bash_modules` script.
+BASE_CONDA_ENV_PYTHON="3.9"
+BASE_CONDA_ENV_NAME="base-${BASE_CONDA_ENV_PYTHON}"
+BASE_CONDA_ENV_PACKAGES=(
+    # for example
+    git+https://github.com/fpartl/metarunner.git
+    funkybob
+    tqdm
+    numpy
+)

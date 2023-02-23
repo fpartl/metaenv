@@ -51,26 +51,22 @@ is-run() {
     fi
 }
 
-is-1-8-16-0-plzen() {
-    is-run 1 8 16 0 plzen
-}
+# Create aliases for favourite interactive sesstion configurations
+if [[ ! -z $FAVOURITE_IS_CONFIGS ]]; then
+    echo
+    echo "Creating iteractive session aliases..."
 
-is-2-16-32-0-plzen() {
-    is-run 2 16 32 0 plzen
-}
+    for ((i=0; i<${#FAVOURITE_IS_CONFIGS[@]}; i++)); do
+        alias_name=$(echo "${FAVOURITE_IS_CONFIGS[$i]}" | tr -s ' ' | tr ' ' '-')
+        alias_body="is-run ${FAVOURITE_IS_CONFIGS[$i]}"
 
-is-4-16-32-0-plzen() {
-    is-run 4 16 32 0 plzen
-}
+        echo -n "creating ${alias_name}... "
+        alias ${alias_name}="${alias_body}"
 
-is-2-32-32-1() {
-    is-run 2 32 32 1
-}
-
-is-3-32-32-0() {
-    is-run 3 32 32 0
-}
-
-is-2-32-32-0() {
-    is-run 2 32 32 0
-}
+        if command -v ${alias_name} &> /dev/null; then
+            echo -e "\033[0;32mok\033[0m"
+        else
+            echo -e "\033[0;31mnok!\033[0m"
+        fi
+    done
+fi

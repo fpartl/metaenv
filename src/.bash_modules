@@ -6,9 +6,13 @@ if [[ ! -z ${INITIALIZED_MODULES} ]]; then
     echo "Adding modules..."
 
     for module in ${INITIALIZED_MODULES[@]}; do
+        echo -n "adding \`${module}\`... "
+        module add ${module}
+
+        # Run command againt to get some "exit value".
+        # Metacenter's module returns 0 on error...
         module_command_output=$((module add ${module}) 2>&1)
 
-        echo -n "adding \`${module}\`... "
         if [[ -z ${module_command_output} ]]; then
             echo -e "\033[0;32mok\033[0m"
         else
@@ -20,7 +24,7 @@ fi
 # Base conda environment with some useful packages
 enable_conda_base() {
     if ! command -v conda &> /dev/null; then
-        echo "Enable `conda-modules` module first!"
+        echo -e "\033[0;32mEnable `conda-modules` module first!\033[0m"
         return 1
     fi
 
@@ -40,15 +44,12 @@ enable_conda_base() {
 
         conda activate $BASE_CONDA_ENV_NAME
 
-        # Install some evergreen packages
-        pip install git+https://github.com/fpartl/metarunner.git
-        pip install funkybob
-        pip install tqdm
-        pip install numpy
-        pip install xmltodict
-        pip install plotly
-        pip install pandas
-        pip install kaleido
+        # Install packages from BASE_CONDA_ENV_PACKAGES
+        if [[ ! -z ${BASE_CONDA_ENV_PACKAGES} ]]; then
+            for package in ${BASE_CONDA_ENV_PACKAGES[@]}; do
+                pip install "${package}"
+            done
+        fi
     else
         conda activate $BASE_CONDA_ENV_NAME
     fi
