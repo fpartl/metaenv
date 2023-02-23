@@ -57,7 +57,7 @@ if [[ ! -z $FAVOURITE_IS_CONFIGS ]]; then
     echo "Creating iteractive session aliases..."
 
     for ((i=0; i<${#FAVOURITE_IS_CONFIGS[@]}; i++)); do
-        alias_name=$(echo "${FAVOURITE_IS_CONFIGS[$i]}" | tr -s ' ' | tr ' ' '-')
+        alias_name="is-$(echo "${FAVOURITE_IS_CONFIGS[$i]}" | tr -s ' ' | tr ' ' '-')"
         alias_body="is-run ${FAVOURITE_IS_CONFIGS[$i]}"
 
         echo -n "creating ${alias_name}... "
