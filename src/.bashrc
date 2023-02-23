@@ -1,9 +1,16 @@
-OVERRIDE_KRB_FILE="FILE:/tmp/krb5cc_$(id -u)"
-OVERRIDE_HOME="" # not really tested feature...
+### User configurations ######################################################################
+ENVIRONMENT_VARS=(
+    KRB5CCNAME="FILE:/tmp/krb5cc_$(id -u)"
+)
 
-MODULE_PYTHON_ENABLE=1
-MODULE_CONDA_ENABLE=1
-MODULE_JULIA_ENABLE=1
+# List of available module seems to vary by Metacentrum's node...
+# Maybe you should install your software to home directory and change PATH variable.
+# See the end of this file.
+INITIALIZED_MODULES=(
+    python
+    conda-modules
+    # julia-1.5.3-gcc
+)
 
 ### Metacentrum recommendation ###############################################################
 # from https://wiki.metacentrum.cz/wiki/U%C5%BEivatel:Mmares/Co_si_d%C3%A1t_do_.bashrc%3F
@@ -29,45 +36,41 @@ cd_modulefiles() {
 }
 
 ### My initialization scripts ################################################################
+if [[ ! -z ${ENVIRONMENT_VARS} ]]; then
+    echo "Exporting environment variables..."
+
+    for var_line in ${ENVIRONMENT_VARS[@]}; do
+        IFS='=' read -ra var_line_arr <<< ${var_line}
+        var_name=${var_line_arr[0]}
+        var_value=${var_line_arr[1]}
+
+        echo -n "exporting ${var_name}=${var_value}... "
+        export_command_output=$((export ${var_name}=${var_value}) 2>&1)
+
+        if [[ -z ${export_command_output} ]]; then
+            echo -e "\033[0;32mok\033[0m"
+        else
+            echo -e "\033[0;31mnok!\033[0m (error: ${export_command_output})"
+            echo -e ""
+        fi
+    done
+fi
+
+# Enable `module` command
 . /software/modules/init
 
+# Modules init scripts
+# Initializing modules from INITIALIZED_MODULES array!
 if [[ -f ~/.bash_modules ]]; then
     source ~/.bash_modules
 fi
 
+# Some additional useful functions
 if [[ -f ~/.bash_functions ]]; then
     source ~/.bash_functions
 fi
 
-# Set Kerberos ticket (because of VS Code remote extension)
-if [[ ! -z $OVERRIDE_KRB_FILE ]]; then
-    echo "exporting KRB5CCNAME=${OVERRIDE_KRB_FILE}"
-    export KRB5CCNAME=$OVERRIDE_KRB_FILE
-fi
-
-if [[ ! -z $OVERRIDE_HOME ]]; then
-    echo "exporting HOME=${OVERRIDE_HOME}"
-    export HOME=$OVERRIDE_HOME
-fi
-
-echo
-
-# Activate Python module
-if [[ $MODULE_PYTHON_ENABLE -eq 1 ]]; then
-    echo "Module python added"
-    enable_python
-fi
-
-# Use user based Conda environment
-if [[ $MODULE_CONDA_ENABLE -eq 1 ]]; then
-    echo "Module conda-modules added"
-    enable_conda
-fi
-
-# Activate Julia module
-if [[ $MODULE_JULIA_ENABLE -eq 1 ]]; then
-    echo "Module julia added"
-    enable_julia
-fi
-
-export PATH="/storage/plzen1/home/$(whoami)/vscode-server:${PATH}"
+# Initialization of the PATH variable
+# CHANGE THIS ON YOUR MACHINE!
+export PATH="${HOME}/vscode-server:${PATH}"
+export PATH="${HOME}/tools/julia-1.8.5/bin:${PATH}"

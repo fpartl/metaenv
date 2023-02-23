@@ -41,10 +41,9 @@ is-run() {
     qsub_command="
         qsub -I \
             -p +250 \
-            -v HOME=/storage/plzen1/home/$(whoami) \
             -l walltime=6:0:0 -q ${queue} \
             -l select=1:ncpus=${cpus}:ngpus=${gpus}:mem=${rams}:scratch_ssd=${scrt}${city} \
-            -- /bin/bash -c \"export HOME=/storage/plzen1/home/$(whoami) && cd ~ && /bin/bash\"
+            -- /bin/bash -c \"export HOME=${HOME} && cd ~ && /bin/bash\"
     "
 
     read -p "$(echo "${qsub_command}... proced? (y/n):" | xargs) " -n 1 -r

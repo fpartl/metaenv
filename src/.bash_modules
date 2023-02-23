@@ -1,25 +1,31 @@
 #!/bin/bash
 
-# Enable custom Python support
-enable_python() {
-    module add python
-}
+# Loading modules from INITIALIZED_MODULES array (defined in `.bashrc` file)
+if [[ ! -z ${INITIALIZED_MODULES} ]]; then
+    echo
+    echo "Adding modules..."
 
-# Enable custom Conda support
-enable_conda() {
-    module add conda-modules
-}
+    for module in ${INITIALIZED_MODULES[@]}; do
+        module_command_output=$((module add ${module}) 2>&1)
 
-enable_julia() {
-    module load julia/julia-1.7.0-gcc-8.3.0-jmtninw
-}
+        echo -n "adding \`${module}\`... "
+        if [[ -z ${module_command_output} ]]; then
+            echo -e "\033[0;32mok\033[0m"
+        else
+            echo -e "\033[0;31mnok!\033[0m (error: ${module_command_output})"
+        fi
+    done
+fi
 
-BASE_CONDA_ENV_PYTHON="3.9"
-BASE_CONDA_ENV_NAME="base-${BASE_CONDA_ENV_PYTHON}"
+# Base conda environment with some useful packages
 enable_conda_base() {
     if ! command -v conda &> /dev/null; then
-        enable_conda 
+        echo "Enable `conda-modules` module first!"
+        return 1
     fi
+
+    BASE_CONDA_ENV_PYTHON="3.9"
+    BASE_CONDA_ENV_NAME="base-${BASE_CONDA_ENV_PYTHON}"
 
     echo "Activating conda env ${BASE_CONDA_ENV_NAME}..."
 
@@ -30,10 +36,19 @@ enable_conda_base() {
         conda create \
             --name $BASE_CONDA_ENV_NAME \
             --no-default-packages \
-            --file ~/.conda_base_requirements.txt \
             python=$BASE_CONDA_ENV_PYTHON
 
         conda activate $BASE_CONDA_ENV_NAME
+
+        # Install some evergreen packages
+        pip install git+https://github.com/fpartl/metarunner.git
+        pip install funkybob
+        pip install tqdm
+        pip install numpy
+        pip install xmltodict
+        pip install plotly
+        pip install pandas
+        pip install kaleido
     else
         conda activate $BASE_CONDA_ENV_NAME
     fi

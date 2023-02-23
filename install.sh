@@ -8,7 +8,6 @@ INSTALL_SCRIPTS=(
     ".bash_modules"
     ".bash_profile"
     ".bashrc"
-    ".conda_base_requirements.txt"
     ".ssh/config"
 )
 
