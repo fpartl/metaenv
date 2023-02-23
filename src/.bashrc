@@ -1,18 +1,22 @@
 ### User configurations ######################################################################
+# Add your favourie software to the PATH variable
+export PATH="${HOME}/vscode-server:${PATH}"
+export PATH="${HOME}/tools/julia-1.8.5/bin:${PATH}"
+
+# Rewrite environment variables
 ENVIRONMENT_VARS=(
     KRB5CCNAME="FILE:/tmp/krb5cc_$(id -u)"
 )
 
-# List of available module seems to vary by Metacentrum's node...
-# Maybe you should install your software to home directory and change PATH variable.
-# See the end of this file.
+# Automatically initialize frequently used modules
+# Warning! List of available modules seems to vary by Metacenter's node...
 INITIALIZED_MODULES=(
     python
     conda-modules
     # julia-1.5.3-gcc
 )
 
-### Metacentrum recommendation ###############################################################
+### Metacenter's recommendation ###############################################################
 # from https://wiki.metacentrum.cz/wiki/U%C5%BEivatel:Mmares/Co_si_d%C3%A1t_do_.bashrc%3F
 
 # Následující řádek vám obarví prompt (např. mmares@metasw8) na zeleno a cestu za ním (např. /software/dirac) na modro
@@ -36,6 +40,7 @@ cd_modulefiles() {
 }
 
 ### My initialization scripts ################################################################
+# Rewrite environment variables
 if [[ ! -z ${ENVIRONMENT_VARS} ]]; then
     echo "Exporting environment variables..."
 
@@ -59,8 +64,7 @@ fi
 # Enable `module` command
 . /software/modules/init
 
-# Modules init scripts
-# Initializing modules from INITIALIZED_MODULES array!
+# Initialize modules from INITIALIZED_MODULES array and much more!
 if [[ -f ~/.bash_modules ]]; then
     source ~/.bash_modules
 fi
@@ -69,8 +73,3 @@ fi
 if [[ -f ~/.bash_functions ]]; then
     source ~/.bash_functions
 fi
-
-# Initialization of the PATH variable
-# CHANGE THIS ON YOUR MACHINE!
-export PATH="${HOME}/vscode-server:${PATH}"
-export PATH="${HOME}/tools/julia-1.8.5/bin:${PATH}"

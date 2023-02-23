@@ -40,7 +40,6 @@ while true; do
 done
 
 # Prompt user for confirmation
-echo -e "\033[1;31mWarning! Works only with home directory in \"/storage/plzen1/home/...\" for now. :-/\033[0m"
 confirm_prompt "Are you sure you want to proceed?"
 if [[ $? -ne 0 ]]; then
     echo "See you later then..."
