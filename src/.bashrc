@@ -33,8 +33,8 @@ if [[ ! -z ${ENVIRONMENT_VARS} ]]; then
 
     for ((i=0; i<${#ENVIRONMENT_VARS[@]}; i++)); do
         IFS='=' read -ra var_line_arr <<< "${ENVIRONMENT_VARS[$i]}"
-        var_name=${var_line_arr[0]}
-        var_value=${var_line_arr[1]}
+        var_name="${var_line_arr[0]}"
+        var_value="${var_line_arr[1]}"
 
         echo -n "exporting ${var_name}=\"${var_value}\"... "
         export ${var_name}="${var_value}"
@@ -47,7 +47,7 @@ if [[ ! -z ${ENVIRONMENT_VARS} ]]; then
     done
 fi
 
-# Add software to PATH
+# Add your software to PATH
 if [[ ! -z ${EXTRA_PATH_DIRS} ]]; then
     echo
     echo "Adding items to PATH variable..."
@@ -72,7 +72,7 @@ if [[ -f ~/.bash_modules ]]; then
     source ~/.bash_modules
 fi
 
-# Some additional useful functions
+# Initialize of interactive session aliases and much more!
 if [[ -f ~/.bash_functions ]]; then
     source ~/.bash_functions
 fi

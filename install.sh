@@ -9,8 +9,8 @@ INSTALL_SCRIPTS=(
     ".bash_modules"
     ".bash_profile"
     ".bashrc"
-    ".ssh/config"
 )
+USER_CONFIG_FILE=".metaenv_user_conf"
 
 ### SCRIPT BODY
 confirm_prompt() {
@@ -48,10 +48,27 @@ if [[ $? -ne 0 ]]; then
     exit 1
 fi
 
+# Install user configuration script
+echo "Installing user configuration file..."
+target_config_file="${install_path}/${USER_CONFIG_FILE}"
+if [[ -f ${target_config_file} ]]; then
+    confirm_prompt "File ${target_config_file} already exists. Are you really sure you want to rewrite it?!"
+
+    if [[ $? -ne 0 ]]; then
+        echo "Skipping user configuration file..."
+        target_config_file=""
+    fi
+fi
+
+if [[ ! -z ${target_config_file} ]]; then
+    cp ${target_config_file} "${script_dir}/${USER_CONFIG_FILE}"
+fi
+
+
 # Create symlinks (remove existing symlinks)
 echo "Creating symlinks..."
 for script in ${INSTALL_SCRIPTS[@]}; do
-    symlink_name="${INSTALL_PATH}/${script}"
+    symlink_name="${install_path}/${script}"
     script_name="${script_dir}/${script}"
 
     confirm_prompt "Create symlink \"${symlink_name} -> ${script_name}\"?"
