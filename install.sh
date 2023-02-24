@@ -3,7 +3,6 @@
 ### CONFIGURATIONS
 INSTALL_PATH=${HOME}
 INSTALL_SCRIPTS=(
-    ".metaenv_user_conf"
     ".bash_functions"
     ".bash_login"
     ".bash_modules"
@@ -13,6 +12,14 @@ INSTALL_SCRIPTS=(
 USER_CONFIG_FILE=".metaenv_user_conf"
 
 ### SCRIPT BODY
+success_echo() {
+    echo -e "\033[1;32m$1\033[0m"
+}
+
+info_echo() {
+    echo -e "\033[1;34m$1\033[0m"
+}
+
 confirm_prompt() {
     read -p "${1} (y/n) " -n 1 -r
     echo
@@ -41,15 +48,16 @@ while true; do
     fi
 done
 
-# Prompt user for confirmation
-confirm_prompt "Are you sure you want to proceed?"
-if [[ $? -ne 0 ]]; then
-    echo "See you later then..."
-    exit 1
-fi
+# # Prompt user for confirmation
+# confirm_prompt "Are you sure you want to proceed?"
+# if [[ $? -ne 0 ]]; then
+#     echo "See you later then..."
+#     exit 1
+# fi
 
 # Install user configuration script
-echo "Installing user configuration file..."
+echo
+info_echo "Installing user configuration file..."
 target_config_file="${install_path}/${USER_CONFIG_FILE}"
 if [[ -f ${target_config_file} ]]; then
     confirm_prompt "File ${target_config_file} already exists. Are you really sure you want to rewrite it?!"
@@ -61,22 +69,19 @@ if [[ -f ${target_config_file} ]]; then
 fi
 
 if [[ ! -z ${target_config_file} ]]; then
-    cp ${target_config_file} "${script_dir}/${USER_CONFIG_FILE}"
+    rm -f "${target_config_file}"
+    cp "${script_dir}/${USER_CONFIG_FILE}" "${target_config_file}"
 fi
 
 
 # Create symlinks (remove existing symlinks)
-echo "Creating symlinks..."
+echo
+info_echo "Creating symlinks..."
 for script in ${INSTALL_SCRIPTS[@]}; do
     symlink_name="${install_path}/${script}"
     script_name="${script_dir}/${script}"
 
-    confirm_prompt "Create symlink \"${symlink_name} -> ${script_name}\"?"
-    if [[ $? -ne 0 ]]; then
-        echo "Skipping script \"${script}\"..."
-        continue
-    fi
-
+    echo "creating ${symlink_name}..."
     if [[ ! -f ${script_name} ]]; then
         echo "This is very weird. Script ${script_name} does not exists... skipping."
         continue
@@ -100,8 +105,8 @@ for script in ${INSTALL_SCRIPTS[@]}; do
     ln -s ${script_name} ${symlink_name}
     if [[ $? -ne 0 ]]; then
         echo "Symlink creation failed... skipping."
-        continue
     fi
 done
 
-echo "Installation completed! Have a nice day!"
+echo
+success_echo "Installation completed! Have a nice day!"
