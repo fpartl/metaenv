@@ -1,15 +1,15 @@
-# !!! USE FOLLOWING COMMAND TO IGNORE CHANGES OF THIS FILE !!!
-# git update-index --skip-worktree src/.metaenv_user_conf
-
 #!/bin/bash
 
 # This script contains user configurations.
 # Modify the following array according to your needs.
 
+# Verbosity level in 1, 2 or 3 (most eloquent)
+VERBOSITY_LEVEL=3
+
 # Add your favourie software to the PATH variable
 EXTRA_PATH_DIRS=(
     # for example:
-    /storage/plzen1/home/your_username/tools/julia-1.8.5/bin
+    "/storage/plzen1/home/your_username/tools/julia-1.8.5/bin"
 )
 
 # Rewrite environment variables
@@ -22,7 +22,7 @@ ENVIRONMENT_VARS=(
 # Warning! List of available modules varies by Metacenter's node...
 INITIALIZED_MODULES=(
     # for example:
-    conda-modules
+    "conda-modules"
 )
 
 # Function `is-run` in `src/.bash_functions` script can be used to easily launch interactive sessions.
@@ -46,8 +46,8 @@ BASE_CONDA_ENV_PYTHON="3.9"
 BASE_CONDA_ENV_NAME="base-${BASE_CONDA_ENV_PYTHON}"
 BASE_CONDA_ENV_PACKAGES=(
     # for example
-    git+https://github.com/fpartl/metarunner.git
-    funkybob
-    tqdm
-    numpy
+    "git+https://github.com/fpartl/metarunner.git"
+    "funkybob"
+    "tqdm"
+    "numpy"
 )
