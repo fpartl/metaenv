@@ -3,8 +3,9 @@
 # This script contains user configurations.
 # Modify the following array according to your needs.
 
-# Verbosity level in 1, 2 or 3 (most eloquent)
-VERBOSITY_LEVEL=3
+# Verbosity level in 1, 2 or 3 (most eloquent).
+# See array `AVAIL_VERBOSITY_LEVELS` in `.bashrc` script.
+VERBOSITY_LEVEL=4
 
 # Add your favourie software to the PATH variable
 EXTRA_PATH_DIRS=(

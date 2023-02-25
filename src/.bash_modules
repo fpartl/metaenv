@@ -2,11 +2,10 @@
 
 # Loading modules from INITIALIZED_MODULES array (defined in `.bashrc` file)
 if [[ ! -z ${INITIALIZED_MODULES} ]]; then
-    echo
-    echo "Adding modules..."
+    echo_info -e "\nAdding modules..."
 
     for module in ${INITIALIZED_MODULES[@]}; do
-        echo -n "adding \`${module}\`... "
+        echo_verbose -n "adding \`${module}\`... "
         module add ${module}
 
         # Run command againt to get some "exit value".
@@ -14,9 +13,9 @@ if [[ ! -z ${INITIALIZED_MODULES} ]]; then
         module_command_output=$((module add ${module}) 2>&1)
 
         if [[ -z ${module_command_output} ]]; then
-            echo -e "\033[0;32mok\033[0m"
+            echo_verbose -e "\033[0;32mok\033[0m"
         else
-            echo -e "\033[0;31mnok!\033[0m (error: ${module_command_output})"
+            echo_verbose -e "\033[0;31mnok!\033[0m (error: ${module_command_output})"
         fi
     done
 fi
@@ -24,18 +23,18 @@ fi
 # Base conda environment with some useful packages
 enable_conda_base() {
     if ! command -v conda &> /dev/null; then
-        echo -e "\033[0;32mEnable `conda-modules` module first!\033[0m"
+        echo_error -e "\033[0;32mEnable `conda-modules` module first!\033[0m"
         return 1
     fi
 
     BASE_CONDA_ENV_PYTHON="3.9"
     BASE_CONDA_ENV_NAME="base-${BASE_CONDA_ENV_PYTHON}"
 
-    echo "Activating conda env ${BASE_CONDA_ENV_NAME}..."
+    echo_info "Activating conda env ${BASE_CONDA_ENV_NAME}..."
 
     base_conda_env_exitsts=$(conda env list -q | grep $BASE_CONDA_ENV_NAME | wc -l)
     if [[ $base_conda_env_exitsts -ne 1 ]]; then
-        echo "Conda env ${BASE_CONDA_ENV_NAME} does not exists... creating now!"
+        echo_info "Conda env ${BASE_CONDA_ENV_NAME} does not exists... creating now!"
 
         conda create \
             --name $BASE_CONDA_ENV_NAME \

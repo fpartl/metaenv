@@ -9,7 +9,7 @@ docker-to-sif() {
 
     # Check if input file exists
     if [[ -z $docker_image ]]; then
-        echo "docker-to-sif <docker-image-file> [singularity-output-sif]"
+        echo_error "docker-to-sif <docker-image-file> [singularity-output-sif]"
         return 1
     fi
 
@@ -21,7 +21,7 @@ docker-to-sif() {
     # Build singularity image
     singularity build "${singul_image}" "docker-archive://${docker_image}"
 
-    echo "Run with: singularity shell $(realpath $singul_image)"
+    echo_info "Run with: singularity shell $(realpath $singul_image)"
 }
 
 is-run() {
@@ -33,8 +33,7 @@ is-run() {
     queue=$([[ $gpus -eq 0 ]]     && echo "default@meta-pbs.metacentrum.cz" || echo "gpu@meta-pbs.metacentrum.cz")
 
     if [[ -z $cpus ]] || [[ -z $rams ]] || [[ -z $scrt ]] || [[ -z $gpus ]]; then
-        echo $cpus $rams $scrt
-        echo "is-run <cpus> <rams-gb> <scrt-gb> <gpus> [city]"
+        echo_error "is-run <cpus> <rams-gb> <scrt-gb> <gpus> [city]"
         return 1
     fi
 
@@ -53,20 +52,19 @@ is-run() {
 
 # Create aliases for favourite interactive sesstion configurations
 if [[ ! -z $FAVOURITE_IS_CONFIGS ]]; then
-    echo
-    echo "Creating iteractive session aliases..."
+    echo_info -e "\nCreating iteractive session aliases..."
 
     for ((i=0; i<${#FAVOURITE_IS_CONFIGS[@]}; i++)); do
         alias_name="is-$(echo "${FAVOURITE_IS_CONFIGS[$i]}" | tr -s ' ' | tr ' ' '-')"
         alias_body="is-run ${FAVOURITE_IS_CONFIGS[$i]}"
 
-        echo -n "creating ${alias_name}... "
+        echo_verbose -n "creating ${alias_name}... "
         alias ${alias_name}="${alias_body}"
 
         if command -v ${alias_name} &> /dev/null; then
-            echo -e "\033[0;32mok\033[0m"
+            echo_verbose -e "\033[0;32mok\033[0m"
         else
-            echo -e "\033[0;31mnok!\033[0m"
+            echo_verbose -e "\033[0;31mnok!\033[0m"
         fi
     done
 fi
