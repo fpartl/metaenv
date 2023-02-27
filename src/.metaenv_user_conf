@@ -7,16 +7,16 @@
 # See array `AVAIL_VERBOSITY_LEVELS` in `.bashrc` script.
 VERBOSITY_LEVEL=4
 
-# Add your favourie software to the PATH variable
-EXTRA_PATH_DIRS=(
-    # for example:
-    "/storage/plzen1/home/your_username/tools/julia-1.8.5/bin"
-)
-
 # Rewrite environment variables
 ENVIRONMENT_VARS=(
     # for example:
     SAMPLE_TEST_VARIABLE="It works!"
+)
+
+# Add your favourie software to the PATH variable
+EXTRA_PATH_DIRS=(
+    # for example:
+    "/storage/plzen1/home/your_username/tools/julia-1.8.5/bin"
 )
 
 # Automatically initialize frequently used modules
@@ -24,6 +24,18 @@ ENVIRONMENT_VARS=(
 INITIALIZED_MODULES=(
     # for example:
     "conda-modules"
+)
+
+# Base conda environment configuration
+# You can create your base conda environment using `enable_conda_base` function from `.bash_modules` script.
+BASE_CONDA_ENV_PYTHON="3.9"
+BASE_CONDA_ENV_NAME="base-${BASE_CONDA_ENV_PYTHON}"
+BASE_CONDA_ENV_PACKAGES=(
+    # for example
+    "git+https://github.com/fpartl/metarunner.git"
+    "funkybob"
+    "tqdm"
+    "numpy"
 )
 
 # Function `is-run` in `src/.bash_functions` script can be used to easily launch interactive sessions.
@@ -39,16 +51,4 @@ FAVOURITE_IS_CONFIGS=(
     "2 32 32 0"
     "3 32 32 0"
     "4 16 32 0 plzen"
-)
-
-# Base conda environment configuration
-# You can create your base conda environment using `enable_conda_base` function from `.bash_modules` script.
-BASE_CONDA_ENV_PYTHON="3.9"
-BASE_CONDA_ENV_NAME="base-${BASE_CONDA_ENV_PYTHON}"
-BASE_CONDA_ENV_PACKAGES=(
-    # for example
-    "git+https://github.com/fpartl/metarunner.git"
-    "funkybob"
-    "tqdm"
-    "numpy"
 )
