@@ -87,13 +87,12 @@ for script in ${INSTALL_SCRIPTS[@]}; do
         continue
     fi
 
-    if [[ -f ${symlink_name} ]]; then
+    if [[ -f ${symlink_name} ]] && [[ ! -L ${symlink_name} ]]; then
         confirm_prompt "File ${symlink_name} already exists. Do you want to rewrite it?"
+
         if [[ $? -ne 0 ]]; then
             echo "Skipping script \"${script}\"..."
             continue
-        else
-            rm -f ${symlink_name}
         fi
     fi
 
@@ -102,6 +101,7 @@ for script in ${INSTALL_SCRIPTS[@]}; do
         mkdir -p ${symlink_dir}
     fi
 
+    rm -f ${symlink_name}
     ln -s ${script_name} ${symlink_name}
     if [[ $? -ne 0 ]]; then
         echo "Symlink creation failed... skipping."

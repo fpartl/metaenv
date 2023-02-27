@@ -45,7 +45,7 @@ if [[ ! -z ${AVAIL_VERBOSITY_LEVELS} ]]; then
 
         eval "${echo_fnc_name}() {
             if [[ ${VERBOSITY_LEVEL} -ge ${verbosity_level} ]]; then
-                echo \$@
+                echo \"\$@\"
             fi
         }"
     done
