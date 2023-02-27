@@ -41,7 +41,7 @@ is-run() {
                     -p +250 \
                     -l walltime=6:0:0 -q ${queue} \
                     -l select=1:ncpus=${cpus}:ngpus=${gpus}:mem=${rams}:scratch_ssd=${scrt}${city} \
-                    -- /bin/bash -c \"export TMPDIR=$SCRATCHDIR && export HOME=${HOME} && cd ~ && /bin/bash\""
+                    -- /bin/bash -c \"export HOME=${HOME} && cd ~ && /bin/bash\""
 
     read -p "$(echo "${qsub_command}... proced? (y/n):" | awk '{$1=$1};1')" -n 1 -r
     echo
