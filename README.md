@@ -4,7 +4,7 @@ Automatic module initialization, easy export environment variables
 
 ## Instalation
 Connect to your favourite [MetaVO frontend machine](https://wiki.metacentrum.cz/wiki/Frontend) via SSH. In the next example, the front node `nympha.zcu.cz` is used.
-```bash
+```console
 your_name@nympha~$ git clone https://github.com/fpartl/metaenv.git .metaenv_repo
 Cloning into '.metaenv_repo'...
 ...
@@ -39,7 +39,7 @@ The installation script does the following:
 
 ## Update
 To update simply navigate to your `metaenv` repository clone and pull changes from `latest` branch. Reinstallation is required only when the `.metaenv_user_conf` file structure is changed.
-```bash
+```console
 your_name@nympha~$ cd .metaenv_repo
 your_name@nympha~/.metaenv_repo$ git fetch
 your_name@nympha~/.metaenv_repo$ git checkout latest
