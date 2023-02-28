@@ -43,7 +43,7 @@ is-run() {
                     -l select=1:ncpus=${cpus}:ngpus=${gpus}:mem=${rams}:scratch_ssd=${scrt}${city} \
                     -- /bin/bash -c \"export HOME=${HOME} && cd ~ && /bin/bash\""
 
-    read -p "$(echo "${qsub_command}... proced? (y/n):" | awk '{$1=$1};1')" -n 1 -r
+    read -p "$(echo "${qsub_command}... proceed? (y/n):" | awk '{$1=$1};1')" -n 1 -r
     echo
     if [[ $REPLY =~ ^y|Y$ ]]; then
         eval ${qsub_command}
