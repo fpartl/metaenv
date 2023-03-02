@@ -21,14 +21,11 @@ if [[ ! -z ${INITIALIZED_MODULES} ]]; then
 fi
 
 # Base conda environment with some useful packages
-enable_conda_base() {
+encuba() {
     if ! command -v conda &> /dev/null; then
-        echo_error -e "\033[0;32mEnable `conda-modules` module first!\033[0m"
+        echo_error -e "\033[0;32mRun `module add conda-modules` first!\033[0m"
         return 1
     fi
-
-    BASE_CONDA_ENV_PYTHON="3.9"
-    BASE_CONDA_ENV_NAME="base-${BASE_CONDA_ENV_PYTHON}"
 
     echo_info "Activating conda env ${BASE_CONDA_ENV_NAME}..."
 
