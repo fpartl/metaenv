@@ -16,7 +16,7 @@ ENVIRONMENT_VARS=(
 # Add your favourie software to the PATH variable
 EXTRA_PATH_DIRS=(
     # for example:
-    "/storage/plzen1/home/your_username/tools/julia-1.8.5/bin"
+    "${HOME}/tools/vscode"
 )
 
 # Automatically initialize frequently used modules
