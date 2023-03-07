@@ -3,6 +3,12 @@
 # Enable SCRATCH->TMP mapping
 alias tmp-to-scratch='export TMPDIR=$SCRATCHDIR'
 
+# Run VS Code server
+if command -v code &> /dev/null; then
+    alias vscode-serve="code tunnel --log trace --verbose"
+fi
+
+# Compile Singularity images from docker images
 docker-to-sif() {
     docker_image=$([[ -f $1 ]] && echo $1 || echo "")
     singul_image=$([[ -z $2 ]] && echo "${docker_image}.sif" || echo $2 )

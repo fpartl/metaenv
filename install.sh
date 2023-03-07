@@ -10,6 +10,7 @@ INSTALL_SCRIPTS=(
     ".bashrc"
 )
 USER_CONFIG_FILE=".metaenv_user_conf"
+VSCODE_INSTALL_PATH="tools/code-cli"
 
 ### SCRIPT BODY
 success_echo() {
@@ -26,27 +27,36 @@ confirm_prompt() {
     [[ $REPLY =~ ^[Yy]$ ]]
 }
 
+# $1 default path
+# $2 prompt
+# $3 has to be writable
+install_path=""
+get_install_folder() {
+    while true; do
+        install_path="${1}"
+
+        read -p "${2} (${1}): " user_path
+        if [[ ! -z ${user_path} ]]; then
+            install_path=${user_path}
+        fi
+
+        if [[ -w ${install_path} ]] || [[ $3 -eq 0 ]]; then
+            break
+        else
+            echo "Directory \"${install_path}\" does not exist or it is not writable! Restarting..."
+        fi
+    done
+}
+
 # Get location of this script
 script_dir="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )/src"
 
 # Get installation folder (idealy user's home directory)
-while true; do
-    install_path=${INSTALL_PATH}
-
-    read \
-        -p "In which home directory do you want to install scripts? (${install_path}):" \
-        user_install_path
-
-    if [[ ! -z ${user_install_path} ]]; then
-        install_path=${user_install_path}
-    fi
-
-    if [[ -w ${install_path} ]]; then
-        break
-    else
-        echo "Directory \"${install_path}\" does not exist or it is not writable! Restarting..."
-    fi
-done
+# Sets install_path global variable!
+get_install_folder "${INSTALL_PATH}" "In which home directory do you want to install scripts?:" 1
+if [[ $? -ne 0 ]]; then
+    exit 1
+fi
 
 # # Prompt user for confirmation
 # confirm_prompt "Are you sure you want to proceed?"
@@ -58,6 +68,7 @@ done
 # Install user configuration script
 echo
 info_echo "Installing user configuration file..."
+
 target_config_file="${install_path}/${USER_CONFIG_FILE}"
 if [[ -f ${target_config_file} ]]; then
     confirm_prompt "File ${target_config_file} already exists. Are you really sure you want to rewrite it?!"
@@ -72,7 +83,6 @@ if [[ ! -z ${target_config_file} ]]; then
     rm -f "${target_config_file}"
     cp "${script_dir}/${USER_CONFIG_FILE}" "${target_config_file}"
 fi
-
 
 # Create symlinks (remove existing symlinks)
 echo
@@ -107,6 +117,41 @@ for script in ${INSTALL_SCRIPTS[@]}; do
         echo "Symlink creation failed... skipping."
     fi
 done
+
+# Install VS Code CLI
+echo
+info_echo "Installing custom 3rd party software..."
+confirm_prompt "Do you want to install VS Code CLI?"
+if [[ $? -eq 0 ]]; then
+    echo "installing VS Code CLI..."
+
+    # Get install folder for VS Code CLI
+    # function sets global variable install_path
+    get_install_folder "${install_path}/${VSCODE_INSTALL_PATH}" "In which directory do you want to VS Code CLI?" 0
+    if [[ $? -ne 0 ]]; then
+        exit 1
+    fi
+
+    mkdir -p "${install_path}"
+    if [[ $? -ne 0 ]]; then
+        echo_error "Error while creating ${install_path} folder..."
+        exit 1
+    fi
+
+    cd "${install_path}"
+    curl -Lk 'https://code.visualstudio.com/sha/download?build=stable&os=cli-alpine-x64' --output vscode_cli.tar.gz &> /dev/null
+    tar -xf vscode_cli.tar.gz
+    rm -f vscode_cli.tar.gz
+
+    vscode_path="${install_path}/code"
+    if [[ ! -x "${vscode_path}" ]]; then
+        echo_error "VS Code CLI was not successful... check https://code.visualstudio.com/docs/remote/tunnels for more details."
+        exit 1
+    fi
+
+    # Add install_path to PATH array
+    sed -i "/^EXTRA_PATH_DIRS=(.*/a \ \ \ \ \"${install_path}\" # vscode-cli installation folder" "${target_config_file}"
+fi
 
 echo
 success_echo "Installation completed! Have a nice day!"
