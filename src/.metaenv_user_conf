@@ -45,9 +45,7 @@ BASE_CONDA_ENV_PACKAGES=(
 # Array elements must be in `<cpus> <rams-gb> <scrt-gb> <gpus> [city]` format.
 FAVOURITE_IS_CONFIGS=(
     # for example
-    "1  8 16 0 plzen"
-    "2 16 32 0 plzen"
-    "3 32 32 1"
-    "3 32 32 0"
-    "4 64 32 0 plzen"
+    "1  8 16 0 cl_halmir=True:brno=True"
+    "2 32 32 1"
+    "4 16 32 0 plzen=True"
 )
