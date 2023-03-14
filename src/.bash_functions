@@ -38,13 +38,13 @@ watch_job() {
     fi
 
     # Get job status using `qstat` command
-    qstat_output=$(qstat -fx -F dsv "${1}" 2>/dev/null)
+    qstat_output=$(qstat -fx -F dsv "${1}" 2>&1)
 
     # Check if job exists
     job_exists=$(echo "${qstat_output}" | grep "qstat: Unknown Job Id" | wc -l)
     if [[ $job_exists -ne 0 ]]; then
         echo_error "qstat: Unknown Job Id ${1}"
-        echo_info "Check your jobs at https://metavo.metacentrum.cz/pbsmon2/user/${USER}."
+        echo_info "Check may check your jobs at: https://metavo.metacentrum.cz/pbsmon2/user/${USER}"
         return 2
     fi
 
@@ -87,6 +87,7 @@ watch_job() {
         fi
 
         # Run `less` command
+        echo -e "\033[1;34mLess of ${out_file}:\033[0m"
         less "${out_file}"
 
         echo
