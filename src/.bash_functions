@@ -30,6 +30,87 @@ docker-to-sif() {
     echo_info "Run with: singularity shell $(realpath $singul_image)"
 }
 
+watch_job() {
+    # Check input arguments
+    if [[ -z "${1}" ]] || [[ ! "${2}" =~ ^(ER|OU)$ ]]; then
+        echo_error "watch_job <job-id> <ER|OU>"
+        return 1
+    fi
+
+    # Get job status using `qstat` command
+    qstat_output=$(qstat -fx -F dsv "${1}" 2>/dev/null)
+
+    # Check if job exists
+    job_exists=$(echo "${qstat_output}" | grep "qstat: Unknown Job Id" | wc -l)
+    if [[ $job_exists -ne 0 ]]; then
+        echo_error "qstat: Unknown Job Id ${1}"
+        echo_info "Check your jobs at https://metavo.metacentrum.cz/pbsmon2/user/${USER}."
+        return 2
+    fi
+
+    # Get job information
+    job_id=$(echo "${qstat_output}" | perl -n -e'/Job Id: (.*?)\|/gm && print $1')
+    job_state=$(echo "${qstat_output}" | perl -n -e'/job_state=(.*?)\|/gm && print $1')
+
+    if [[ $job_state == "R" ]]; then
+        ### Job is currently runnning
+        echo_info "Info: Job ${job_id} is currenty running!"
+
+        # Get execution node
+        exec_host=$(echo "${qstat_output}" | perl -n -e'/exec_host=(.*?)\//gm && print $1')
+        if [[ -z $exec_host ]]; then
+            echo_error "Failed to get the execution node... weird."
+            return 3
+        fi
+
+        # Assemble spool file path
+        out_file="/var/spool/pbs/spool/${job_id}.${2}"
+
+        # Run `tail` command over ssh
+        ssh \
+            "${exec_host}" \
+            "echo && echo -e \"\033[1;34mTail of ${exec_host}:${out_file}:\033[0m\" && tail -f -n 2 ${out_file}"
+
+        echo
+    else
+        ### Job is currently not running
+        echo_info "Info: Job ${job_id} is currently not running"
+
+        # Get output file location
+        out_file_key=$([[ $2 == "OU" ]] && echo "Output_Path" || echo "Error_Path")
+        out_file=$(echo "${qstat_output}" | perl -n -e"/${out_file_key}=(.*?)\|/gm && print \$1" | cut -f2 -d":")
+
+        if [[ ! -r "${out_file}" ]]; then
+            file_type=$([[ $2 == "OU" ]] && echo "Output" || echo "Error")
+            echo_error "${file_type} file ${out_file} no longer exists!"
+            return 4
+        fi
+
+        # Run `less` command
+        less "${out_file}"
+
+        echo
+    fi
+}
+
+watch_job_err() {
+    if [[ -z "${1}" ]]; then
+        echo_error "watch_job_err <job-id>"
+        return 1
+    fi
+
+    watch_job $1 ER
+}
+
+watch_job_out() {
+    if [[ -z "${1}" ]]; then
+        echo_error "watch_job_out <job-id>"
+        return 1
+    fi
+
+    watch_job $1 OU
+}
+
 is-run-requirements() {
     if [[ -z $1 ]]; then
         echo_error "is-run-command <requirements> (where \`requirements\` means \`-l\` and \`-q\` args)"
