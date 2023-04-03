@@ -52,8 +52,13 @@ watch_job() {
     job_id=$(echo "${qstat_output}" | perl -n -e'/Job Id: (.*?)\|/gm && print $1')
     job_state=$(echo "${qstat_output}" | perl -n -e'/job_state=(.*?)\|/gm && print $1')
 
+    # Omit moved jobs
+    if [[ $job_state == "M" ]]; then
+        qstat_output=$(qstat -f -F dsv "${1}" 2>&1)
+    fi
+
+    ### Job is currently runnning
     if [[ $job_state == "R" ]]; then
-        ### Job is currently runnning
         echo_info "Info: Job ${job_id} is currenty running!"
 
         # Get execution node
@@ -69,20 +74,21 @@ watch_job() {
         # Run `tail` command over ssh
         ssh \
             "${exec_host}" \
-            "echo && echo -e \"\033[1;34mTail of ${exec_host}:${out_file}:\033[0m\" && tail -f -n 2 ${out_file}"
+            "echo && echo -e \"\033[1;34mTail of ${exec_host}:${out_file}:\033[0m\" && tail -f ${out_file}"
 
         echo
+    ### Job is currently not running
     else
-        ### Job is currently not running
         echo_info "Info: Job ${job_id} is currently not running"
 
         # Get output file location
         out_file_key=$([[ $2 == "OU" ]] && echo "Output_Path" || echo "Error_Path")
         out_file=$(echo "${qstat_output}" | perl -n -e"/${out_file_key}=(.*?)\|/gm && print \$1" | cut -f2 -d":")
 
+        # Check if output file actually exists
         if [[ ! -r "${out_file}" ]]; then
             file_type=$([[ $2 == "OU" ]] && echo "Output" || echo "Error")
-            echo_error "${file_type} file ${out_file} no longer exists!"
+            echo_error "${file_type} file ${out_file} does not exist!"
             return 4
         fi
 
