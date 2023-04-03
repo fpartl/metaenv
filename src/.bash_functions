@@ -37,7 +37,7 @@ watch_job() {
         return 1
     fi
 
-    # Get job status using `qstat` command
+    # Get job status using `qstat` command (including nonrunning jobs)
     qstat_output=$(qstat -fx -F dsv "${1}" 2>&1)
 
     # Check if job exists
@@ -59,7 +59,7 @@ watch_job() {
 
     ### Job is currently runnning
     if [[ $job_state == "R" ]]; then
-        echo_info "Info: Job ${job_id} is currenty running!"
+        echo_info -e "Info: job_state=\033[1;32m\"${job_state}\"\033[0m"
 
         # Get execution node
         exec_host=$(echo "${qstat_output}" | perl -n -e'/exec_host=(.*?)\//gm && print $1')
@@ -72,6 +72,7 @@ watch_job() {
         out_file="/var/spool/pbs/spool/${job_id}.${2}"
 
         # Run `tail` command over ssh
+        echo_info -e "Info: exec_host=\033[1;34m\"${exec_host}\"\033[0m"
         ssh \
             "${exec_host}" \
             "echo && echo -e \"\033[1;34mTail of ${exec_host}:${out_file}:\033[0m\" && tail -f ${out_file}"
@@ -79,7 +80,7 @@ watch_job() {
         echo
     ### Job is currently not running
     else
-        echo_info "Info: Job ${job_id} is currently not running"
+        echo_info -e "Info: job_state=\033[1;31m\"${job_state}\"\033[0m"
 
         # Get output file location
         out_file_key=$([[ $2 == "OU" ]] && echo "Output_Path" || echo "Error_Path")
