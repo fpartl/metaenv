@@ -121,9 +121,11 @@ watch_job_out() {
 
 is-run-requirements() {
     if [[ -z $1 ]]; then
-        echo_error "is-run-command <requirements> (where \`requirements\` means \`-l\` and \`-q\` args)"
+        echo_error "is-run-command <requirements> <mail in 0|1> (where \`requirements\` means \`-l\` and \`-q\` args)"
         return 1
     fi
+
+    # TODO integrate mail!
 
     qsub_command="qsub -I -p +250 ${1} -- /bin/bash -c \"export HOME=${HOME} && cd ~ && /bin/bash\""
 
@@ -135,19 +137,21 @@ is-run-requirements() {
 }
 
 is-run() {
-    cpus=$([[ $1 =~ ^[0-9]+$ ]]   && echo $1        || echo "")
-    rams=$([[ $2 =~ ^[0-9]+$ ]]   && echo "$2gb"    || echo "")
-    scrt=$([[ $3 =~ ^[0-9]+$ ]]   && echo "$3gb"    || echo "")
-    gpus=$([[ $4 =~ ^[0-9]+$ ]]   && echo "$4"      || echo "")
-    other=$([[ ! -z $5 ]]         && echo ":$5"     || echo "")
-    queue=$([[ $gpus -eq 0 ]]     && echo "default@meta-pbs.metacentrum.cz" || echo "gpu@meta-pbs.metacentrum.cz")
+    cpus=$([[ $1 =~ ^[0-9]+$ ]]         && echo $1                                  || echo "")
+    rams=$([[ $2 =~ ^[0-9]+$ ]]         && echo "$2gb"                              || echo "")
+    scrt=$([[ $3 =~ ^[0-9]+$ ]]         && echo "$3gb"                              || echo "")
+    gpus=$([[ $4 =~ ^[0-9]+$ ]]         && echo "$4"                                || echo "")
+    other=$([[ ! -z $5 ]]               && echo ":$5"                               || echo "")
+    queue=$([[ $gpus -eq 0 ]]           && echo "default@meta-pbs.metacentrum.cz"   || echo "gpu@meta-pbs.metacentrum.cz")
+    mail=$([[ ! -z $IS_MAIL ]]          && echo "-m ${IS_MAIL}"                     || echo "")
+    walltime=$([[ ! -z $IS_WALLTIME ]]  && echo "${IS_WALLTIME}"                    || echo "12")
 
-    if [[ -z $cpus ]] || [[ -z $rams ]] || [[ -z $scrt ]] || [[ -z $gpus ]]; then
-        echo_error "is-run <cpus> <rams-gb> <scrt-gb> <gpus> [cluster|city]"
+    if [[ -z $cpus ]] || [[ -z $rams ]] || [[ -z $scrt ]] || [[ -z $gpus ]] || [[ ! $mail =~ "^(abe)|(be)|(ae)|(ab)|(e)|(b)|(a)$" ]] || [[ -z $walltime ]]; then
+        echo_error -e "[IS_MAIL=a|b|e] [IS_WALLTIME=hh (default 12)] is-run <cpus> <rams-gb> <scrt-gb> <gpus> [cluster|city] \nemail notification legend: \033[1;34mhttps://wiki.metacentrum.cz/wiki/About_scheduling_system#How_to_setup_email_notification_about_job_state\033[0m"
         return 1
     fi
 
-    requirements="-l walltime=10:0:0 -q ${queue} -l select=1:ncpus=${cpus}:ngpus=${gpus}:mem=${rams}:scratch_ssd=${scrt}${other}"
+    requirements="${mail} -l walltime=${walltime}:00:00 -q ${queue} -l select=1:ncpus=${cpus}:ngpus=${gpus}:mem=${rams}:scratch_ssd=${scrt}${other}"
     is-run-requirements "${requirements}"
 }
 
