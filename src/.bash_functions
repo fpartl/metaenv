@@ -143,15 +143,15 @@ is-run() {
     gpus=$([[ $4 =~ ^[0-9]+$ ]]         && echo "$4"                                || echo "")
     other=$([[ ! -z $5 ]]               && echo ":$5"                               || echo "")
     queue=$([[ $gpus -eq 0 ]]           && echo "default@meta-pbs.metacentrum.cz"   || echo "gpu@meta-pbs.metacentrum.cz")
-    mail=$([[ ! -z $IS_MAIL ]]          && echo "-m ${IS_MAIL}"                     || echo "")
+    mail=$([[ ! -z $IS_MAIL ]]          && echo "${IS_MAIL}"                        || echo "n")
     walltime=$([[ ! -z $IS_WALLTIME ]]  && echo "${IS_WALLTIME}"                    || echo "12")
 
-    if [[ -z $cpus ]] || [[ -z $rams ]] || [[ -z $scrt ]] || [[ -z $gpus ]] || [[ ! $mail =~ "^(abe)|(be)|(ae)|(ab)|(e)|(b)|(a)$" ]] || [[ -z $walltime ]]; then
+    if [[ -z $cpus ]] || [[ -z $rams ]] || [[ -z $scrt ]] || [[ -z $gpus ]] || [[ ! $mail =~ ^(abe|be|ae|ab|n|e|b|a)$ ]] || [[ -z $walltime ]]; then
         echo_error -e "[IS_MAIL=a|b|e] [IS_WALLTIME=hh (default 12)] is-run <cpus> <rams-gb> <scrt-gb> <gpus> [cluster|city] \nemail notification options: \033[1;34mhttps://wiki.metacentrum.cz/wiki/About_scheduling_system#How_to_setup_email_notification_about_job_state\033[0m"
         return 1
     fi
 
-    requirements="${mail} -l walltime=${walltime}:00:00 -q ${queue} -l select=1:ncpus=${cpus}:ngpus=${gpus}:mem=${rams}:scratch_ssd=${scrt}${other}"
+    requirements="-m ${mail} -l walltime=${walltime}:00:00 -q ${queue} -l select=1:ncpus=${cpus}:ngpus=${gpus}:mem=${rams}:scratch_ssd=${scrt}${other}"
     is-run-requirements "${requirements}"
 }
 
