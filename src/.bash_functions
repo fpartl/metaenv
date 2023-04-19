@@ -147,7 +147,7 @@ is-run() {
     walltime=$([[ ! -z $IS_WALLTIME ]]  && echo "${IS_WALLTIME}"                    || echo "12")
 
     if [[ -z $cpus ]] || [[ -z $rams ]] || [[ -z $scrt ]] || [[ -z $gpus ]] || [[ ! $mail =~ "^(abe)|(be)|(ae)|(ab)|(e)|(b)|(a)$" ]] || [[ -z $walltime ]]; then
-        echo_error -e "[IS_MAIL=a|b|e] [IS_WALLTIME=hh (default 12)] is-run <cpus> <rams-gb> <scrt-gb> <gpus> [cluster|city] \nemail notification legend: \033[1;34mhttps://wiki.metacentrum.cz/wiki/About_scheduling_system#How_to_setup_email_notification_about_job_state\033[0m"
+        echo_error -e "[IS_MAIL=a|b|e] [IS_WALLTIME=hh (default 12)] is-run <cpus> <rams-gb> <scrt-gb> <gpus> [cluster|city] \nemail notification options: \033[1;34mhttps://wiki.metacentrum.cz/wiki/About_scheduling_system#How_to_setup_email_notification_about_job_state\033[0m"
         return 1
     fi
 
