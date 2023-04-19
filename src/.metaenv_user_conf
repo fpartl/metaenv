@@ -11,6 +11,8 @@ VERBOSITY_LEVEL=4
 ENVIRONMENT_VARS=(
     # for example:
     SAMPLE_TEST_VARIABLE="It works!"
+    # IS_MAIL=          # default email notification (possible values `a|b|e` see https://wiki.metacentrum.cz/wiki/About_scheduling_system#How_to_setup_email_notification_about_job_state for more info)
+    # IS_WALLTIME=12    # default walltime in HOURS (you can override using `IS_WALLTIME=42 is-...`)
 )
 
 # Add your favourie software to the PATH variable
@@ -49,3 +51,6 @@ FAVOURITE_IS_CONFIGS=(
     "2 32 32 1"
     "4 16 32 0 plzen=True"
 )
+
+
+
