@@ -55,7 +55,7 @@ docker-image-to-sif-image() {
 
     # Build singularity image
     echo_info -e "\n\033[1;34mRunning \`singularity build\` command...\033[0m"
-    singularity build "${temp_singul_image}" "docker-archive://${temp_docker_image}" 1>/dev/null
+    singularity build "${temp_singul_image}" "docker-archive://${temp_docker_image}"
     build_ret=$?
 
     # Copy singularity image to target destination and remove temp image
