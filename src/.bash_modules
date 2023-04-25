@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# Loading modules from INITIALIZED_MODULES array (defined in `.bashrc` file)
+# Loading modules from INITIALIZED_MODULES array (defined in `.metaenv_user_conf` file)
 if [[ ! -z ${INITIALIZED_MODULES} ]]; then
     echo_info -e "\nAdding modules..."
 
     for module in ${INITIALIZED_MODULES[@]}; do
         echo_verbose -n "adding \`${module}\`... "
-        module add ${module}
+        module add ${module} >/dev/null 2>&1
 
         # Run command againt to get some "exit value".
         # Metacenter's module returns 0 on error...

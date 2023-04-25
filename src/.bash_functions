@@ -10,8 +10,11 @@ fi
 
 # Compile Singularity images from docker images
 docker-to-sif() {
-    docker_image=$([[ -f $1 ]] && echo $1 || echo "")
+    docker_image=$([[ -r $1 ]] && echo $1 || echo "")
     singul_image=$([[ -z $2 ]] && echo "${docker_image}.sif" || echo $2 )
+
+    temp_docker_image="${docker_image}"
+    temp_singul_image="${singul_image}"
 
     # Check if input file exists
     if [[ -z $docker_image ]]; then
@@ -19,15 +22,49 @@ docker-to-sif() {
         return 1
     fi
 
-    # Set $SCRATCHDIR to $TMPDIR if scratchdir is available
+    # Use machine's $SCRATCHDIR if available!
     if [[ $SCRATCHDIR != "/scratch/${USER}" ]]; then
-        tmp-to-scratch
+        read -p "Scratchdir is available. Do you want to use it? (y/n):" -n 1 -r
+        echo
+
+        if [[ $REPLY =~ ^y|Y$ ]]; then
+            echo_info -e "\033[1;34mUsing machines \$SCRATCHDIR...\033[0m"
+            tmp-to-scratch
+    
+            # Ready scratch dir for image copies
+            scratch_temp="${SCRATCHDIR}/docker-to-sif-temp"
+            rm -rf "${scratch_temp}"
+            mkdir -p "${scratch_temp}"
+
+            # Copy Docker image
+            image_name=$(basename "${docker_image}")
+            temp_docker_image="${scratch_temp}/${image_name}"
+            echo_info "Copying docker image to scratchdir..."
+            rsync -ah --info=progress2 --info=name0 "${docker_image}" "${temp_docker_image}"
+
+            # Set temp singularity image
+            image_name=$(basename "${singul_image}")
+            temp_singul_image="${scratch_temp}/${image_name}"
+        fi
     fi
 
     # Build singularity image
-    singularity build "${singul_image}" "docker-archive://${docker_image}"
+    echo_info -e "\n\033[1;34mRunning \`singularity build\` command...\033[0m"
+    singularity build "${temp_singul_image}" "docker-archive://${temp_docker_image}"
+    build_ret=$?
 
-    echo_info "Run with: singularity shell $(realpath $singul_image)"
+    # Copy singularity image to target destination
+    if [[ $build_ret -eq 0 ]] && [[ "${singul_image}" != "${temp_singul_image}" ]]; then
+        echo_info "Copying singularity image to target destination..."
+        rsync -ah --info=progress2 --info=name0 "${temp_singul_image}" "${singul_image}"
+    fi
+
+    # Print build info
+    if [[ $build_ret -eq 0 ]]; then
+        echo_info -e "\033[0;32mRun with: singularity shell $(realpath $singul_image)\033[0m"
+    else
+        echo_error -e "\033[0;31mError while running \`singularity build\` command...\033[0m" 
+    fi
 }
 
 watch_job() {
