@@ -1,11 +1,22 @@
+#!/bin/bash
 
-# Compile Singularity images from docker images
 docker-to-sif() {
+    docker-image-to-sif-image "${1}" "${2}"
+    return $?
+
+    # TODO: function `dockerfile-to-sif-image` is not implemented yet!
+    docker_input_basename=$(basename "${1}")
+    if [[ "${docker_input_basename}" == "Dockerfile" ]]; then
+        dockerfile-to-sif-image "${1}" "${2}"
+    else
+        docker-image-to-sif-image "${1}" "${2}"
+    fi
+}
+
+# Compile Docker image to Singularity image
+docker-image-to-sif-image() {
     docker_image=$([[ -r $1 ]] && echo $1 || echo "")
     singul_image=$([[ -z $2 ]] && echo "${docker_image}.sif" || echo $2 )
-
-    temp_docker_image="${docker_image}"
-    temp_singul_image="${singul_image}"
 
     # Check if input file exists
     if [[ -z $docker_image ]]; then
@@ -13,13 +24,16 @@ docker-to-sif() {
         return 1
     fi
 
+    temp_docker_image="${docker_image}"
+    temp_singul_image="${singul_image}"
+
     # Use machine's $SCRATCHDIR if available!
     if [[ $SCRATCHDIR != "/scratch/${USER}" ]]; then
-        read -p "Scratchdir is available. Do you want to use it? (y/n):" -n 1 -r
+        read -p "SCRATCHDIR is available. Do you want to use it? (y/n):" -n 1 -r
         echo
 
         if [[ $REPLY =~ ^y|Y$ ]]; then
-            echo_info -e "\033[1;34mUsing machines \$SCRATCHDIR...\033[0m"
+            echo_info -e "\n\033[1;34mUsing machines \$SCRATCHDIR (\`${SCRATCHDIR}\`)...\033[0m"
             tmp-to-scratch
     
             # Ready scratch dir for image copies
@@ -30,7 +44,7 @@ docker-to-sif() {
             # Copy Docker image
             image_name=$(basename "${docker_image}")
             temp_docker_image="${scratch_temp}/${image_name}"
-            echo_info "Copying docker image to scratchdir..."
+            echo_info "Copying Docker image to \`${temp_docker_image}\`..."
             rsync -ah --info=progress2 --info=name0 "${docker_image}" "${temp_docker_image}"
 
             # Set temp singularity image
@@ -41,13 +55,14 @@ docker-to-sif() {
 
     # Build singularity image
     echo_info -e "\n\033[1;34mRunning \`singularity build\` command...\033[0m"
-    singularity build "${temp_singul_image}" "docker-archive://${temp_docker_image}"
+    singularity build "${temp_singul_image}" "docker-archive://${temp_docker_image}" 1>/dev/null
     build_ret=$?
 
-    # Copy singularity image to target destination
+    # Copy singularity image to target destination and remove temp image
     if [[ $build_ret -eq 0 ]] && [[ "${singul_image}" != "${temp_singul_image}" ]]; then
         echo_info "Copying singularity image to target destination..."
         rsync -ah --info=progress2 --info=name0 "${temp_singul_image}" "${singul_image}"
+        rm -rf "${scratch_temp}"
     fi
 
     # Print build info
@@ -57,3 +72,84 @@ docker-to-sif() {
         echo_error -e "\033[0;31mError while running \`singularity build\` command...\033[0m" 
     fi
 }
+
+# TODO: Dockerfile->Singularity def file if a nice idea, but it's not working because of INCLUDE+ command in Dockerfiles
+# Compile Dockerfile to Singularity image (using `spython` module)
+# dockerfile-to-sif-image() {
+#     # input Dockerfile
+#     dockerfile=$([[ -r $1 ]] && echo $1 || echo "")
+
+#     # output Singularity files (Singularity definition file and image)
+#     singul_image_name=$(basename $(dirname $(realpath "${dockerfile}")))
+#     singul_image=$([[ -z $2 ]] && echo "signularity/${singul_image_name}.sif" || echo $2 )
+#     singul_def="${singul_image}.def"
+
+#     # Check if output files already exists
+#     if [[ -f "${singul_image}" ]] || [[ -f "${singul_def}" ]]; then
+#         echo_info "Singularity image or definition file already exists..."
+        
+#         read -p "Do you want to overwrite them? (y/n):" -n 1 -r
+#         echo
+#         if [[ $REPLY =~ ^y|Y$ ]]; then
+#             rm -rf "${singul_image}" "${singul_def}"
+#         else
+#             echo_error "Aborting..."
+#             return 1
+#         fi
+#     fi
+
+#     # Create build directory
+#     singul_build_dir=$(dirname "${singul_image}")
+#     if [[ ! -d "${singul_build_dir}" ]]; then
+#         mkdir -p "${singul_build_dir}"
+#     fi
+
+#     # Create definition file from the input Dockerfile
+#     spython recipe "${dockerfile}" "${singul_def}"
+#     if [[ $? -ne 0 ]]; then
+#         echo_error "Failed to create definition file from Dockerfile... aborting."
+#         return 1
+#     fi
+
+#     temp_singul_image="${singul_image}"
+
+#     echo "${temp_singul_image}"
+#     return 0
+
+#     # Use machine's $SCRATCHDIR if available!
+#     if [[ $SCRATCHDIR != "/scratch/${USER}" ]]; then
+#         read -p "Scratchdir is available. Do you want to use it? (y/n):" -n 1 -r
+#         echo
+
+#         if [[ $REPLY =~ ^y|Y$ ]]; then
+#             echo_info -e "\033[1;34mUsing machines \$SCRATCHDIR...\033[0m"
+#             tmp-to-scratch
+
+#             # Ready scratch dir for image copies
+#             scratch_temp="${SCRATCHDIR}/dockerfile-to-sif-image-temp"
+#             rm -rf "${scratch_temp}"
+#             mkdir -p "${scratch_temp}"
+
+#             # Set temp singularity image
+#             image_name=$(basename "${singul_image}")
+#             temp_singul_image="${scratch_temp}/${image_name}"
+#         fi
+#     fi
+
+#     # Build Singularity image
+#     singularity build "${temp_singul_image}" "${singul_def}"
+#     build_ret=$?
+
+#     # Copy image from scratch dir
+#     if [[ $build_ret -eq 0 ]] && [[ "${singul_image}" != "${temp_singul_image}" ]]; then
+#         echo_info "Copying singularity image to target destination..."
+#         rsync -ah --info=progress2 --info=name0 "${temp_singul_image}" "${singul_image}"
+#     fi
+
+#     # Print build info
+#     if [[ $build_ret -eq 0 ]]; then
+#         echo_info -e "\033[0;32mRun with: singularity shell $(realpath $singul_image)\033[0m"
+#     else
+#         echo_error -e "\033[0;31mError while running \`singularity build\` command...\033[0m" 
+#     fi
+# }
