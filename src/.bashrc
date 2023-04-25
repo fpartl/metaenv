@@ -89,7 +89,9 @@ if [[ ! -z ${EXTRA_PATH_DIRS} ]]; then
 fi
 
 # Enable `module` command
-. /software/modules/init
+if ! command -v module &> /dev/null; then
+    . /software/modules/init
+fi
 
 # Initialize modules from INITIALIZED_MODULES array and much more!
 if [[ -f ~/.bash_modules ]]; then
@@ -97,6 +99,16 @@ if [[ -f ~/.bash_modules ]]; then
 fi
 
 # Initialize of interactive session aliases and much more!
-if [[ -f ~/.bash_functions ]]; then
-    source ~/.bash_functions
+if [[ -f ~/.bash_jobs ]]; then
+    source ~/.bash_jobs
+fi
+
+# Initialize of container support (Docker + Singularity)
+if [[ -f ~/.bash_containers ]]; then
+    source ~/.bash_containers
+fi
+
+# Initialize of frequently used aliases
+if [[ -f ~/.bash_aliases ]]; then
+    source ~/.bash_aliases
 fi

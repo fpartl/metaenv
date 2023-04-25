@@ -3,7 +3,9 @@
 ### CONFIGURATIONS
 INSTALL_PATH=${HOME}
 INSTALL_SCRIPTS=(
-    ".bash_functions"
+    ".bash_aliases"
+    ".bash_containers"
+    ".bash_jobs"
     ".bash_login"
     ".bash_modules"
     ".bash_profile"
