@@ -83,7 +83,7 @@ sinshell() {
 
     # Check if any singularity image was found
     if [[ -z "${singul_image}" ]]; then
-        echo_error "No singularity image provided or found known destionations..."
+        echo_error "sinshell [sif-image] ... if [sif-image] is not provided \`sinshell\` will search \`*.sif\` files in \`.\` and \`singularity\` directories."
         return 1
     fi
 
