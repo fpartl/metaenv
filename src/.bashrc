@@ -93,6 +93,11 @@ if ! command -v module &> /dev/null; then
     . /software/modules/init
 fi
 
+# Initialize of frequently used aliases
+if [[ -f ~/.bash_aliases ]]; then
+    source ~/.bash_aliases
+fi
+
 # Initialize modules from INITIALIZED_MODULES array and much more!
 if [[ -f ~/.bash_modules ]]; then
     source ~/.bash_modules
@@ -106,9 +111,4 @@ fi
 # Initialize of container support (Docker + Singularity)
 if [[ -f ~/.bash_containers ]]; then
     source ~/.bash_containers
-fi
-
-# Initialize of frequently used aliases
-if [[ -f ~/.bash_aliases ]]; then
-    source ~/.bash_aliases
 fi

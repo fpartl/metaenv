@@ -5,6 +5,6 @@ alias tmp-to-scratch='export TMPDIR=$SCRATCHDIR'
 
 # Run VS Code server
 if command -v code &> /dev/null; then
-    alias vscode-server="code tunnel --log trace --verbose"
+    alias vscode-server="$(which code) tunnel --log trace --verbose"
 fi
 
