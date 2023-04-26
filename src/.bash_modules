@@ -6,16 +6,15 @@ if [[ ! -z ${INITIALIZED_MODULES} ]]; then
 
     for module in ${INITIALIZED_MODULES[@]}; do
         echo_verbose -n "adding \`${module}\`... "
+
+        # Remove module first to avoid conflicts (because module is a piece of shit...)
+        module rm ${module} >/dev/null 2>&1
         module add ${module} >/dev/null 2>&1
 
-        # Run command againt to get some "exit value".
-        # Metacenter's module returns 0 on error...
-        module_command_output=$((module add ${module}) 2>&1)
-
-        if [[ -z ${module_command_output} ]]; then
+        if [[ $? -eq 0 ]]; then
             echo_verbose -e "\033[0;32mok\033[0m"
         else
-            echo_verbose -e "\033[0;31mnok!\033[0m (error: ${module_command_output})"
+            echo_verbose -e "\033[0;31mnok!\033[0m"
         fi
     done
 fi
