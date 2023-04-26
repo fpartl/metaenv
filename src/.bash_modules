@@ -21,7 +21,7 @@ if [[ ! -z ${INITIALIZED_MODULES} ]]; then
 fi
 
 # Base conda environment with some useful packages
-encuba() {
+enco() {
     if ! command -v conda &> /dev/null; then
         echo_error -e "\033[0;32mRun `module add conda-modules` first!\033[0m"
         return 1
