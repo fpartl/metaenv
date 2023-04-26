@@ -87,7 +87,14 @@ sinshell() {
         return 1
     fi
 
+    # Check if VS Code server is installed
+    vscode_alias="$(alias vscode-server)" >/dev/null 2>&1
+    vscode_alias=$([[ $? -eq 0 ]] && echo "${vscode_alias}" || echo "" )
+
+    # Check if SCRATCHDIR is available
+    scratchdir_bind=$([[ "${SCRATCHDIR}" != "/scratch/${USER}" ]] && echo "-B \"${SCRATCHDIR}\"" || echo "" )
+
     # Run singularity shell
-    singularity exec --nv -B $SCRATCHDIR "${singul_image}" \
-        /bin/bash -c "$(alias vscode-server) && /bin/bash"
+    singularity exec --nv ${scratchdir_bind} "${singul_image}" \
+        /bin/bash -c "${vscode_alias} && /bin/bash"
 }
