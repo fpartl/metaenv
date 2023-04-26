@@ -14,7 +14,8 @@ docker-to-sif() {
 }
 
 # Compile Docker image to Singularity image
-docker-image-to-sif-image() {
+# TODO: fix typo if this functions requires direct access
+dcoker-image-to-sif-image() {
     docker_image=$([[ -r $1 ]] && echo $1 || echo "")
     singul_image=$([[ -z $2 ]] && echo "${docker_image}.sif" || echo $2 )
 
