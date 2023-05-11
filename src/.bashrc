@@ -21,6 +21,11 @@ cd_modulefiles() {
     cd /afs/.ics.muni.cz/packages/amd64_linux26/modules-2.0/modulefiles
 }
 
+# Enable `module` command
+if ! command -v module &> /dev/null; then
+    . /software/modules/init
+fi
+
 ### metaenv internal functions ############################################################
 # Available verbosity levels
 AVAIL_VERBOSITY_LEVELS=(
@@ -33,7 +38,7 @@ AVAIL_VERBOSITY_LEVELS=(
 
 # Load user defined configuration arrays
 if [[ -f ~/.metaenv_user_conf ]]; then
-    source ~/.metaenv_user_conf
+    . ~/.metaenv_user_conf
 fi
 
 # Generate verbosity levels aliases
@@ -52,63 +57,29 @@ if [[ ! -z ${AVAIL_VERBOSITY_LEVELS} ]]; then
 fi
 
 ### Initialization scripts ################################################################
-# Rewrite environment variables
-if [[ ! -z ${ENVIRONMENT_VARS} ]]; then
-    echo_info -e "\nExporting environment variables..."
+METAENV_SRC_DIR=$(realpath "${HOME}/.bashrc" | xargs dirname)
 
-    for ((i=0; i<${#ENVIRONMENT_VARS[@]}; i++)); do
-        IFS='=' read -ra var_line_arr <<< "${ENVIRONMENT_VARS[$i]}"
-        var_name="${var_line_arr[0]}"
-        var_value="${var_line_arr[1]}"
-
-        echo_verbose -n "exporting ${var_name}=\"${var_value}\"... "
-        export ${var_name}="${var_value}"
-
-        if [[ ${!var_name} == ${var_value} ]]; then
-            echo_verbose -e "\033[0;32mok\033[0m"
-        else
-            echo_verbose -e "\033[0;31mnok!\033[0m"
-        fi
-    done
-fi
-
-# Add your software to PATH
-if [[ ! -z ${EXTRA_PATH_DIRS} ]]; then
-    echo_info -e "\nAdding items to PATH variable..."
-
-    for ((i=0; i<${#EXTRA_PATH_DIRS[@]}; i++)); do
-        echo_verbose -n "adding \"${EXTRA_PATH_DIRS[$i]}\"... "
-        export PATH="${EXTRA_PATH_DIRS[$i]}:${PATH}"
-
-        if [[ "${PATH}" == *"${path}"* ]]; then
-            echo_verbose -e "\033[0;32mok\033[0m"
-        else
-            echo_verbose -e "\033[0;31mnok!\033[0m"
-        fi
-    done
-fi
-
-# Enable `module` command
-if ! command -v module &> /dev/null; then
-    . /software/modules/init
+# Initilialize environment variables and PATH
+if [[ -f "${METAENV_SRC_DIR}/.bash_env" ]]; then
+    . "${METAENV_SRC_DIR}/.bash_env"
 fi
 
 # Initialize of frequently used aliases
-if [[ -f ~/.bash_aliases ]]; then
-    source ~/.bash_aliases
+if [[ -f "${METAENV_SRC_DIR}/.bash_aliases" ]]; then
+    . "${METAENV_SRC_DIR}/.bash_aliases"
 fi
 
 # Initialize modules from INITIALIZED_MODULES array and much more!
-if [[ -f ~/.bash_modules ]]; then
-    source ~/.bash_modules
+if [[ -f "${METAENV_SRC_DIR}/.bash_modules" ]]; then
+    . "${METAENV_SRC_DIR}/.bash_modules"
 fi
 
 # Initialize of interactive session aliases and much more!
-if [[ -f ~/.bash_jobs ]]; then
-    source ~/.bash_jobs
+if [[ -f "${METAENV_SRC_DIR}/.bash_jobs" ]]; then
+    . "${METAENV_SRC_DIR}/.bash_jobs"
 fi
 
 # Initialize of container support (Docker + Singularity)
-if [[ -f ~/.bash_containers ]]; then
-    source ~/.bash_containers
+if [[ -f "${METAENV_SRC_DIR}/.bash_containers" ]]; then
+    . "${METAENV_SRC_DIR}/.bash_containers"
 fi
