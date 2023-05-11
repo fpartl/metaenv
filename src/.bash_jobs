@@ -27,6 +27,10 @@ watch_job() {
     # Omit moved jobs
     if [[ $job_state == "M" ]]; then
         qstat_output=$(qstat -f -F dsv "${1}" 2>&1)
+
+        # Get job information again
+        job_id=$(echo "${qstat_output}" | perl -n -e'/Job Id: (.*?)\|/gm && print $1')
+        job_state=$(echo "${qstat_output}" | perl -n -e'/job_state=(.*?)\|/gm && print $1')
     fi
 
     ### Job is currently runnning
