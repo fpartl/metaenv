@@ -10,33 +10,29 @@ watch_job() {
     fi
 
     # Get job status using `qstat` command (including nonrunning jobs)
-    qstat_output=$(qstat -fx -F dsv "${1}" 2>&1)
+    job_id=$(echo "${1}" | cut -f1 -d".")
+    job_queue=$(qstat -xf $job_id | sed -n -e 's/^ *queue = [^@]*//p')
+    qstat_output=$(qstat -xf -F dsv ${job_id}${job_queue} 2>&1)
 
     # Check if job exists
     job_exists=$(echo "${qstat_output}" | grep "qstat: Unknown Job Id" | wc -l)
     if [[ $job_exists -ne 0 ]]; then
-        echo_error "qstat: Unknown Job Id ${1}"
-        echo_info "Check may check your jobs at: https://metavo.metacentrum.cz/pbsmon2/user/${USER}"
+        echo_error "qstat: Unknown job id ${job_id}"
+        echo_info "You should check your jobs at: https://metavo.metacentrum.cz/pbsmon2/user/${USER}"
         return 2
     fi
 
     # Get job information
     job_id=$(echo "${qstat_output}" | perl -n -e'/Job Id: (.*?)\|/gm && print $1')
     job_state=$(echo "${qstat_output}" | perl -n -e'/job_state=(.*?)\|/gm && print $1')
+    job_exit_code=$(echo "${qstat_output}" | perl -n -e'/Exit_status=(.*?)\|/gm && print $1')
 
-    # Omit moved jobs
-    if [[ $job_state == "M" ]]; then
-        qstat_output=$(qstat -f -F dsv "${1}" 2>&1)
-
-        # Get job information again
-        job_id=$(echo "${qstat_output}" | perl -n -e'/Job Id: (.*?)\|/gm && print $1')
-        job_state=$(echo "${qstat_output}" | perl -n -e'/job_state=(.*?)\|/gm && print $1')
-    fi
+    # Print some basic job information
+    echo_info "Info: job_id=${job_id}"
+    echo_info -e "Info: job_state=\033[1;$([[ $job_state == "R" ]] && echo "32" || echo "34")m${job_state}\033[0m"
 
     ### Job is currently runnning
     if [[ $job_state == "R" ]]; then
-        echo_info -e "Info: job_state=\033[1;32m\"${job_state}\"\033[0m"
-
         # Get execution node
         exec_host=$(echo "${qstat_output}" | perl -n -e'/exec_host=(.*?)\//gm && print $1')
         if [[ -z $exec_host ]]; then
@@ -56,7 +52,11 @@ watch_job() {
         echo
     ### Job is currently not running
     else
-        echo_info -e "Info: job_state=\033[1;31m\"${job_state}\"\033[0m"
+        # Print exit code if available
+        if [[ ! -z $job_exit_code ]]; then
+            code_color=$([[ $job_exit_code -eq 0 ]] && echo "32" || echo "34")
+            echo_info -e "Info: Exit_status=\033[1;${code_color}m${job_exit_code}\033[0m"
+        fi
 
         # Get output file location
         out_file_key=$([[ $2 == "OU" ]] && echo "Output_Path" || echo "Error_Path")
@@ -70,10 +70,8 @@ watch_job() {
         fi
 
         # Run `less` command
-        echo -e "\033[1;34mLess of ${out_file}:\033[0m"
+        echo && echo -e "\033[1;34mLess of ${out_file}:\033[0m"
         less "${out_file}"
-
-        echo
     fi
 }
 
@@ -94,6 +92,10 @@ watch_job_out() {
 
     watch_job $1 OU
 }
+
+# Some conveninet aliases
+alias wje="watch_job_err"
+alias wjo="watch_job_out"
 
 ### INTERACTIVE SESSIONS #######################################################
 
