@@ -51,6 +51,12 @@ your_name@nympha~/tools/metaenv$ ./install.sh # may not be necessary
 ...
 ```
 
+## Install on all storages
+For convenience, a Python script `setup_homes.py` will run the setup on all storages, excluding `du-cesnet`, `software`, `software.metacentrum.cz`, `singularity.metacentrum.cz`, `projects`, and `ostrava2-archive`. The script checks whether or not you have a directory in the storage's `home`.
+
+Running the script with `--update True` will perform an update wherever you have `metaenv` installed.
+The script uses the default settings (pressing `y` and leaving path options empty).
+
 ## Setting things up
 See comments in your freshly installed `.metaenv_user_conf` file.
 
