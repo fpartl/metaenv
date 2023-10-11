@@ -61,3 +61,20 @@ The script uses the default settings (pressing `y` and leaving path options empt
 See comments in your freshly installed `.metaenv_user_conf` file.
 
 Enjoy! :sunglasses:
+
+## Docker-to-sif
+
+On your local machine with docker build the image and export it. 
+
+`docker save -o  <image_name>.tar <image:tag>`
+
+
+Transfer the `<image_name>.tar` to metacentrum and run the utility.
+
+`docker-to-sif <image_name>.tar <image>.sif`
+
+
+
+
+
+
