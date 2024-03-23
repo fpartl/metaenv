@@ -1,22 +1,14 @@
 #!/bin/bash
 
 ### CONFIGURATIONS
-INSTALL_PATH=${HOME}
-INSTALL_SCRIPTS=(
-    ".bash_aliases"
-    ".bash_containers"
-    ".bash_jobs"
-    ".bash_login"
-    ".bash_modules"
-    ".bash_profile"
-    ".bashrc"
-)
-USER_CONFIG_FILE=".metaenv_user_conf"
-VSCODE_INSTALL_PATH="tools/code-cli"
 
 ### SCRIPT BODY
 success_echo() {
     echo -e "\033[1;32m$1\033[0m"
+}
+
+warning_echo() {
+    echo -e "\033[1;33m$1\033[0m"
 }
 
 info_echo() {
@@ -28,6 +20,9 @@ confirm_prompt() {
     echo
     [[ $REPLY =~ ^[Yy]$ ]]
 }
+
+# Get metaenv home dir (where this script is located)
+METAENV_SRC_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )/src"
 
 # $1 default path
 # $2 prompt
@@ -50,86 +45,102 @@ get_install_folder() {
     done
 }
 
-# Get location of this script
-script_dir="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )/src"
 
 # Get installation folder (idealy user's home directory)
 # Sets install_path global variable!
+INSTALL_PATH=${HOME}
 get_install_folder "${INSTALL_PATH}" "In which home directory do you want to install scripts?:" 1
 if [[ $? -ne 0 ]]; then
     exit 1
 fi
+metaenv_install_path="${install_path}"
 
-# # Prompt user for confirmation
-# confirm_prompt "Are you sure you want to proceed?"
-# if [[ $? -ne 0 ]]; then
-#     echo "See you later then..."
-#     exit 1
-# fi
-
-# Install user configuration script
+# Install Metacentrum recommendations scripts!
+# Copy all ".bash*" files from `METAENV_SRC_DIR/src/meta_ref` to install_path (promt user if file already exists)
 echo
-info_echo "Installing user configuration file..."
+info_echo "Installing Metacentrum recommendations scripts..."
+warning_echo "Please note that this will overwrite your existing \`~/.bash*\` files! Skip this step of backup your files first!"
+meta_ref_dir="${METAENV_SRC_DIR}/meta_ref"
+for file in ${meta_ref_dir}/.bash*; do
+    target_file="${install_path}/$(basename ${file})"
 
+    if [[ -f ${target_file} ]]; then
+        confirm_prompt "File \`${target_file}\` already exists. Do you want to rewrite it?"
+
+        if [[ $? -ne 0 ]]; then
+            echo "Skipping file \"$(basename ${file})\"..."
+            continue
+        fi
+    fi
+
+    cp ${file} ${target_file}
+done
+success_echo "OK!"
+
+
+# Install Metaenv user configuration script
+echo
+info_echo "Installing Metaenv user configuration file..."
+USER_CONFIG_FILE=".metaenv_user_conf"
 target_config_file="${install_path}/${USER_CONFIG_FILE}"
 if [[ -f ${target_config_file} ]]; then
-    confirm_prompt "File ${target_config_file} already exists. Are you really sure you want to rewrite it?!"
+    confirm_prompt "File \`${target_config_file} already exists. Are you really sure you want to rewrite it?!"
 
     if [[ $? -ne 0 ]]; then
         echo "Skipping user configuration file..."
         target_config_file=""
     fi
 fi
-
 if [[ ! -z ${target_config_file} ]]; then
-    rm -f "${target_config_file}"
-    cp "${script_dir}/${USER_CONFIG_FILE}" "${target_config_file}"
+    cp "${METAENV_SRC_DIR}/${USER_CONFIG_FILE}" "${target_config_file}"
 fi
+success_echo "OK!"
 
-# Create symlinks (remove existing symlinks)
+
+# Add block to user's .bashrc file (source scripts from `INSTALL_SCRIPTS` array)
+# Rewrite exising source block if exists (decorate using `# metaenv` comment)
+INSTALL_SCRIPTS=(
+    "metaenv.sh"
+    "aliases.sh"
+    "containers.sh"
+    "env_vars.sh"
+    "jobs.sh"
+    "modules.sh"
+)
+BASHRC_FILE="${install_path}/.bashrc"
+SOURCE_BLOCK_DELIMITER="# metaenv stuff"
+
 echo
-info_echo "Creating symlinks..."
+info_echo "Adding metaenv sources to your \`${BASHRC_FILE}\`..."
+
+# create source block
+source_block="${SOURCE_BLOCK_DELIMITER} \n"
 for script in ${INSTALL_SCRIPTS[@]}; do
-    symlink_name="${install_path}/${script}"
-    script_name="${script_dir}/${script}"
-
-    echo "creating ${symlink_name}..."
-    if [[ ! -f ${script_name} ]]; then
-        echo "This is very weird. Script ${script_name} does not exists... skipping."
-        continue
-    fi
-
-    if [[ -f ${symlink_name} ]] && [[ ! -L ${symlink_name} ]]; then
-        confirm_prompt "File ${symlink_name} already exists. Do you want to rewrite it?"
-
-        if [[ $? -ne 0 ]]; then
-            echo "Skipping script \"${script}\"..."
-            continue
-        fi
-    fi
-
-    symlink_dir=$(dirname ${symlink_name})
-    if [[ ! -w ${symlink_dir} ]]; then
-        mkdir -p ${symlink_dir}
-    fi
-
-    rm -f ${symlink_name}
-    ln -s ${script_name} ${symlink_name}
-    if [[ $? -ne 0 ]]; then
-        echo "Symlink creation failed... skipping."
-    fi
+    source_block="${source_block}source ${METAENV_SRC_DIR}/${script}\n"
 done
+source_block="${source_block}${SOURCE_BLOCK_DELIMITER}"
 
-# Install VS Code CLI
+# add source block to user's `.bashrc` file
+if grep -q "${SOURCE_BLOCK_DELIMITER}" ${BASHRC_FILE}; then
+    sed -i "/${SOURCE_BLOCK_DELIMITER}/,/${SOURCE_BLOCK_DELIMITER}/d" ${BASHRC_FILE}
+fi
+echo -e "\n${source_block}" >> ${BASHRC_FILE}
+success_echo "OK!"
+
+# Install custom 3rd party software
 echo
 info_echo "Installing custom 3rd party software..."
+
+# Install VS Code CLI
+VSCODE_INSTALL_PATH="tools/code-cli"
+
 confirm_prompt "Do you want to install VS Code CLI?"
 if [[ $? -eq 0 ]]; then
-    echo "installing VS Code CLI..."
+    echo "Installing VS Code CLI..."
 
     # Get install folder for VS Code CLI
     # function sets global variable install_path
-    get_install_folder "${install_path}/${VSCODE_INSTALL_PATH}" "In which directory do you want to VS Code CLI?" 0
+    get_install_folder "${metaenv_install_path}/${VSCODE_INSTALL_PATH}" "In which directory do you want to VS Code CLI?" 0
     if [[ $? -ne 0 ]]; then
         exit 1
     fi
@@ -155,5 +166,38 @@ if [[ $? -eq 0 ]]; then
     sed -i "/^EXTRA_PATH_DIRS=(.*/a \ \ \ \ \"${install_path}\" # vscode-cli installation folder" "${target_config_file}"
 fi
 
+
+# Install Conda
+MINICONDA_INSTALL_PATH="tools/miniconda"
+
+echo
+info_echo "Installing Miniconda..."
+confirm_prompt "Do you want to install Miniconda?"
+if [[ $? -eq 0 ]]; then
+    echo "installing Miniconda..."
+
+    # Get install folder for Miniconda
+    # function sets global variable install_path
+    get_install_folder "${metaenv_install_path}/${MINICONDA_INSTALL_PATH}" "In which directory do you want to install Miniconda?" 0
+    if [[ $? -ne 0 ]]; then
+        exit 1
+    fi
+
+    mkdir -p "${install_path}"
+    if [[ $? -ne 0 ]]; then
+        echo_error "Error while creating ${install_path} folder..."
+        exit 1
+    fi
+
+    cd "${install_path}"
+    wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+    bash miniconda.sh -b -u -p "${install_path}"
+    rm -f miniconda.sh
+
+    # initialize conda
+    "${install_path}/bin/conda" init bash
+fi
+
 echo
 success_echo "Installation completed! Have a nice day!"
+
