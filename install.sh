@@ -101,11 +101,11 @@ success_echo "OK!"
 # Rewrite exising source block if exists (decorate using `# metaenv` comment)
 INSTALL_SCRIPTS=(
     "metaenv.sh"
-    "aliases.sh"
-    "containers.sh"
     "env_vars.sh"
-    "jobs.sh"
+    "aliases.sh"
     "modules.sh"
+    "containers.sh"
+    "jobs.sh"
 )
 BASHRC_FILE="${install_path}/.bashrc"
 SOURCE_BLOCK_DELIMITER="# metaenv stuff"
