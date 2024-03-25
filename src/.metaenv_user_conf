@@ -25,13 +25,13 @@ EXTRA_PATH_DIRS=(
 # Warning! List of available modules varies by Metacenter's node...
 INITIALIZED_MODULES=(
     # for example:
-    "conda-modules"
+    # "conda-modules"
 )
 
 # Base conda environment configuration
 # You can create your base conda environment using `enable_conda_base` function from `.bash_modules` script.
-BASE_CONDA_ENV_PYTHON="3.9"
-BASE_CONDA_ENV_NAME="base-${BASE_CONDA_ENV_PYTHON}"
+BASE_CONDA_ENV_PYTHON="3.12"
+BASE_CONDA_ENV_NAME="base-metaenv"
 BASE_CONDA_ENV_PACKAGES=(
     # for example
     "git+https://github.com/fpartl/metarunner.git"
