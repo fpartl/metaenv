@@ -75,7 +75,7 @@ sinshell() {
     # Check if any of the possible destinations exists
     for image in "${possible_images[@]}"; do
         if [[ -f "${image}" ]]; then
-            echo_info -e "\033[1;34mUsing singularity image \`${image}\`...\033[0m"
+            echo_info "Using singularity image \`${image}\`..."
             singul_image="${image}"
             break
         fi
@@ -87,14 +87,17 @@ sinshell() {
         return 1
     fi
 
-    # Check if VS Code server is installed
-    vscode_alias="$(alias vscode-server)" >/dev/null 2>&1
-    vscode_alias=$([[ $? -eq 0 ]] && echo "${vscode_alias}" || echo "" )
-
     # Check if SCRATCHDIR is available
     scratchdir_bind=$([[ "${SCRATCHDIR}" != "/scratch/${USER}" ]] && echo "-B \"${SCRATCHDIR}\"" || echo "" )
 
+    # Check if VS Code server is installed and print alias
+    vscode_alias="$(alias vscode-server)" >/dev/null 2>&1
+    if [[ $? -eq 0 ]]; then
+        echo; echo_info -e "\033[1;34mDefine \`vscode-server\` alias with:\033[0m"
+        alias vscode-server
+    fi
+
     # Run singularity shell
-    singularity exec --nv ${scratchdir_bind} "${singul_image}" \
-        /bin/bash -c "${vscode_alias} && /bin/bash"
+    echo
+    singularity shell --home "${HOME}" --nv ${scratchdir_bind} "${singul_image}"
 }
