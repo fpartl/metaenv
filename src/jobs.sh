@@ -120,7 +120,7 @@ is-run() {
     scrt=$([[ $3 =~ ^[0-9]+$ ]]         && echo "$3gb"                              || echo "")
     gpus=$([[ $4 =~ ^[0-9]+$ ]]         && echo "$4"                                || echo "")
     other=$([[ ! -z $5 ]]               && echo ":$5"                               || echo "")
-    queue=$([[ $gpus -eq 0 ]]           && echo "default@meta-pbs.metacentrum.cz"   || echo "gpu@meta-pbs.metacentrum.cz")
+    queue=$([[ $gpus -eq 0 ]]           && echo "default@pbs-m1.metacentrum.cz"   || echo "gpu@pbs-m1.metacentrum.cz")
     mail=$([[ ! -z $IS_MAIL ]]          && echo "${IS_MAIL}"                        || echo "n")
     walltime=$([[ ! -z $IS_WALLTIME ]]  && echo "${IS_WALLTIME}"                    || echo "12")
 
