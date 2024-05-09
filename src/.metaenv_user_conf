@@ -52,5 +52,5 @@ FAVOURITE_IS_CONFIGS=(
     "4 16 32 0 plzen=True"
 )
 
-
-
+# Do you want to automatically map temporary directories to scratch when it is available?
+MAP_TPM_TO_SCRATCH=1

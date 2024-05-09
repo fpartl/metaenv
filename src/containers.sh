@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# TODO: Dockerfile->Singularity def file if a nice idea, but it's not working because of INCLUDE+ command in Dockerfiles
-
 # Compile Docker image to Singularity image
 docker-to-sif() {
     docker_image=$([[ -r $1 ]] && echo $1 || echo "")

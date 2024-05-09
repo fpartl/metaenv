@@ -1,5 +1,20 @@
 #!/bin/bash
 
+### TMPDIR MAPPING #############################################################
+# map `tmp` to $SCRATCHDIR if available
+if [[ ! -z $MAP_TPM_TO_SCRATCH && "${SCRATCHDIR}" != "/scratch/${USER}" ]]; then
+    echo_info "Mapping TMPDIR to SCRATCHDIR..."
+
+    tmp-to-scratch
+    echo_info "exporting TMPDIR=\"${TMPDIR}\""
+
+    sin-tmp-to-scratch
+    echo_info "exporting SINGULARITY_TMPDIR=\"${TMPDIR}\""
+
+    sin-cache-to-scratch
+    echo_info "exporting SINGULARITY_CACHEDIR=\"${TMPDIR}\""
+fi
+
 ### JOB WATCHING ###############################################################
 
 watch_job() {
