@@ -2,7 +2,7 @@
 
 ### TMPDIR MAPPING #############################################################
 # map `tmp` to $SCRATCHDIR if available
-if [[ ! -z $MAP_TPM_TO_SCRATCH && "${SCRATCHDIR}" != "/scratch/${USER}" ]]; then
+if [[ ! -z $MAP_TMP_TO_SCRATCH && "${SCRATCHDIR}" != "/scratch/${USER}" ]]; then
     echo_info "Mapping TMPDIR to SCRATCHDIR..."
 
     tmp-to-scratch
