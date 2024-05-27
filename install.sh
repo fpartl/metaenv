@@ -49,7 +49,7 @@ get_install_folder() {
 # Get installation folder (idealy user's home directory)
 # Sets install_path global variable!
 INSTALL_PATH=${HOME}
-get_install_folder "${INSTALL_PATH}" "In which home directory do you want to install scripts?:" 1
+get_install_folder "${INSTALL_PATH}" "For which home directory do you want to install metaenv?" 1
 if [[ $? -ne 0 ]]; then
     exit 1
 fi
@@ -62,7 +62,7 @@ info_echo "Installing Metacentrum recommendations scripts..."
 warning_echo "Please note that this will overwrite your existing \`~/.bash*\` files! Skip this step of backup your files first!"
 meta_ref_dir="${METAENV_SRC_DIR}/meta_ref"
 for file in ${meta_ref_dir}/.bash*; do
-    target_file="${install_path}/$(basename ${file})"
+    target_file="${metaenv_install_path}/$(basename ${file})"
 
     if [[ -f ${target_file} ]]; then
         confirm_prompt "File \`${target_file}\` already exists. Do you want to rewrite it?"
@@ -82,7 +82,7 @@ success_echo "OK!"
 echo
 info_echo "Installing Metaenv user configuration file..."
 USER_CONFIG_FILE=".metaenv_user_conf"
-target_config_file="${install_path}/${USER_CONFIG_FILE}"
+target_config_file="${metaenv_install_path}/${USER_CONFIG_FILE}"
 if [[ -f ${target_config_file} ]]; then
     confirm_prompt "File \`${target_config_file} already exists. Are you really sure you want to rewrite it?!"
 
@@ -107,7 +107,7 @@ INSTALL_SCRIPTS=(
     "containers.sh"
     "jobs.sh"
 )
-BASHRC_FILE="${install_path}/.bashrc"
+BASHRC_FILE="${metaenv_install_path}/.bashrc"
 SOURCE_BLOCK_DELIMITER="# metaenv stuff"
 
 echo
