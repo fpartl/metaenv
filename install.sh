@@ -94,6 +94,8 @@ fi
 if [[ ! -z ${target_config_file} ]]; then
     cp "${METAENV_SRC_DIR}/${USER_CONFIG_FILE}" "${target_config_file}"
 fi
+# write `target_config_file` back either way so it can be used in other part of the script
+target_config_file="${install_path}/${USER_CONFIG_FILE}"
 success_echo "OK!"
 
 
