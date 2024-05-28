@@ -59,7 +59,7 @@ metaenv_install_path="${install_path}"
 # Copy all ".bash*" files from `METAENV_SRC_DIR/src/meta_ref` to install_path (promt user if file already exists)
 echo
 info_echo "Installing Metacentrum recommendations scripts..."
-warning_echo "Please note that this will overwrite your existing \`~/.bash*\` files! Skip this step of backup your files first!"
+warning_echo "Please note that this will overwrite your existing \`~/.bash*\` files! Skip this step or backup your files first!"
 meta_ref_dir="${METAENV_SRC_DIR}/meta_ref"
 for file in ${meta_ref_dir}/.bash*; do
     target_file="${metaenv_install_path}/$(basename ${file})"
