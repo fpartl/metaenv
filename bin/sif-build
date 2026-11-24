@@ -8,7 +8,10 @@
 set -euo pipefail
 
 usage() {
-    echo "usage: sif-build [-n NAME] <images-dir>" >&2
+    cat >&2 <<EOF
+usage: sif-build [options] <images-dir>
+  -n NAME   name of the image (default: the folder of the project)
+EOF
     exit 2
 }
 
@@ -31,7 +34,7 @@ name=${name,,}   # Docker allows only lowercase names
 tag=$(sif-tag .)
 image="$images/$name-$tag.sif"
 if [[ -f $image ]]; then
-    echo "$image exists"
+    echo "image $image exists"
     exit 0
 fi
 
@@ -45,9 +48,13 @@ docker build "${ssh[@]}" -t "$name:$tag" .
 
 if ! command -v apptainer &> /dev/null; then
     cat >&2 <<EOF
-apptainer is missing on this machine (install it, e.g. fedora_setup). Without it, convert the image on MetaCentrum:
-  docker save -o $images/$name-$tag.tar $name:$tag
-  docker-to-sif $images/$name-$tag.tar $image      # in a job (is-run), then delete the .tar
+apptainer is missing on this machine (install it, e.g. fedora_setup); without it, convert the image on MetaCentrum
+
+here:
+docker save -o $images/$name-$tag.tar $name:$tag
+
+in a job on MetaCentrum (is-run), then delete the .tar:
+docker-to-sif $images/$name-$tag.tar $image
 EOF
     exit 1
 fi
@@ -58,4 +65,5 @@ partial="$image.partial"
 trap 'rm -f "$partial"' EXIT
 APPTAINER_TMPDIR=${APPTAINER_TMPDIR:-/var/tmp} apptainer build "$partial" "docker-daemon://$name:$tag"
 mv "$partial" "$image"
-echo "$image"
+echo
+echo "image $image"

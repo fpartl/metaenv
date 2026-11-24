@@ -42,10 +42,18 @@ its `.bashrc`, metaenv and configuration.
 when `HOME` is on `/storage` (MetaCentrum), so your machine gets just `bin/`: `sif-tag` and `sif-build`. `sif-build`
 needs Docker and [Apptainer](https://apptainer.org/) (`sudo dnf install apptainer`).
 
+### Tab completion
+
+In a terminal, `metaenv.sh` also loads [`completion.bash`](completion.bash): Tab completes your job ids (newest first)
+in `wjo`, `wje`, `job-log`, `job-info` (also finished jobs) and `qdel`, `qextend` (only unfinished ones), `.sif`
+images in `sinshell` and `docker-to-sif`, `.tar` archives in `docker-to-sif`. With
+[fzf](https://github.com/junegunn/fzf) loaded in the shell (`eval "$(fzf --bash)"`), `wjo **<Tab>` opens a list of the
+jobs with their state, name and queue, and puts the id of the chosen one on the command line.
+
 ## Sessions
 
 ```bash
-is-run                       # 2 CPUs, 16 GB RAM, 32 GB local scratch, no GPU, 12 hours
+is-run                       # 2 CPUs, 16 GB RAM, 32 GB local scratch, no GPU, 8 hours
 is-run -g 1 -m 32            # with a GPU, the default queue routes it to the GPU queues
 is-run -w 48 -l cluster=konos
 ```

@@ -3,7 +3,7 @@
 # as many times as you like, and a dropped connection (VPN, sleep) does not end it. Ends with its walltime or `qdel`.
 # Prints the final qsub command and submits it only after a confirmation.
 #
-#   is-run                       # 2 CPUs, 16 GB RAM, 32 GB scratch, no GPU, 12 hours
+#   is-run                       # 2 CPUs, 16 GB RAM, 32 GB scratch, no GPU, 8 hours
 #   is-run -g 1 -m 32            # with a GPU (the default queue routes it to the GPU queues)
 #   is-run -w 48 -l cluster=konos
 
@@ -11,25 +11,28 @@ set -euo pipefail
 
 usage() {
     cat >&2 <<EOF
-usage: is-run [-c CPUS] [-m MEM_GB] [-s SCRATCH_GB] [-g GPUS] [-w HOURS] [-l RESOURCE=VALUE] [-q QUEUE]
-  -c  CPUs (2)          -m  memory in GB (16)     -s  local scratch in GB (32)
-  -g  GPUs (0)          -w  walltime in hours (12)
-  -l  extra resource of the node, repeatable (e.g. cluster=konos, city=plzen)
-  -q  queue (default: routed by the resources)
+usage: is-run [options]
+  -c CPUS             CPUs (2)
+  -g GPUS             GPUs (0)
+  -l RESOURCE=VALUE   extra resource of the node, repeatable (e.g. cluster=konos, city=plzen)
+  -m MEM_GB           memory in GB (16)
+  -q QUEUE            queue (default: routed by the resources)
+  -s SCRATCH_GB       local scratch in GB (32)
+  -w HOURS            walltime in hours (8)
 EOF
     exit 2
 }
 
-cpus=2 mem=16 scratch=32 gpus=0 hours=12 extra="" queue=()
-while getopts "c:m:s:g:w:l:q:h" opt; do
+cpus=2 gpus=0 extra="" mem=16 queue=() scratch=32 hours=8
+while getopts "c:g:hl:m:q:s:w:" opt; do
     case $opt in
         c) cpus=$OPTARG ;;
-        m) mem=$OPTARG ;;
-        s) scratch=$OPTARG ;;
         g) gpus=$OPTARG ;;
-        w) hours=$OPTARG ;;
         l) extra+=":$OPTARG" ;;
+        m) mem=$OPTARG ;;
         q) queue=(-q "$OPTARG") ;;
+        s) scratch=$OPTARG ;;
+        w) hours=$OPTARG ;;
         *) usage ;;
     esac
 done
@@ -39,15 +42,20 @@ for number in "$cpus" "$mem" "$scratch" "$gpus" "$hours"; do
 done
 
 select="select=1:ncpus=$cpus:ngpus=$gpus:mem=${mem}gb:scratch_local=${scratch}gb$extra"
-submit=(qsub -N session -m n -j oe -o /dev/null "${queue[@]}" -l "$select" -l "walltime=$hours:00:00"
+# named after the project (the repository, or the folder outside one) so that qstat shows which session is which; PBS
+# wants a name starting with a letter and without special characters
+project=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)")
+name=is-${project//[^A-Za-z0-9_.-]/_}
+submit=(qsub -N "$name" -m n -j oe -o /dev/null "${queue[@]}" -l "$select" -l "walltime=$hours:00:00"
     -- /bin/sleep infinity)
 # the exact command, to check the resources before they are requested
 printf -v shown "%q " "${submit[@]}"
 echo "${shown% }"
+echo
 read -r -p "submit? [y/N] " answer
 [[ $answer =~ ^[YyAa]$ ]] || exit 1
 id=$("${submit[@]}")
-echo "job $id submitted ($select, ${hours} h), waiting until it runs (Ctrl+C stops waiting, not the job)"
+echo "job $id submitted, waiting until it runs (Ctrl+C stops waiting, not the job)"
 # on EXIT, not only on Ctrl+C: also a failing qstat ends the waiting (set -e) and leaves the job queued
 waiting=1
 on_exit() {
@@ -75,9 +83,16 @@ while true; do
         echo "the job ended without running: $comment" >&2
         exit 1
     fi
-    if [[ "$state $comment" != "$last" ]]; then
-        echo "  $state: $comment"
-        last="$state $comment"
+    case $state in
+        Q) status=queued ;;
+        H) status=held ;;
+        W) status=waiting ;;
+        *) status="state $state" ;;
+    esac
+    status+=${comment:+": $comment"}
+    if [[ $status != "$last" ]]; then
+        echo "  $(date +%H:%M) $status"
+        last=$status
     fi
     sleep 10
 done
@@ -89,11 +104,23 @@ frontend=${METAENV_FRONTEND:-nympha.zcu.cz}
 # any folder name (spaces, quotes, $) arrives as it is
 printf -v login 'export HOME=%q SCRATCHDIR=%q; cd %q && exec bash -l' "$HOME" "$scratchdir" "$PWD"
 printf -v folder %q "$PWD"
+# the commands without indentation and on lines of their own, so that a triple click selects exactly one of them
 cat <<EOF
 
-job $id runs on $host, scratch $scratchdir
-  ssh -t $host ${login@Q}                  # from a frontend
-  ssh -t -J $frontend $host ${login@Q}     # from your machine (README: SSH to the nodes)
-  code --remote ssh-remote+$host $folder
-  qdel $id
+job $id runs
+  node     $host
+  scratch  $scratchdir
+  ends     $(date -d "+$hours hours" '+%Y-%m-%d %H:%M') (extend it by qextend)
+
+from a frontend:
+ssh -t $host ${login@Q}
+
+from your machine (README: SSH to the nodes):
+ssh -t -J $frontend $host ${login@Q}
+
+VS Code:
+code --remote ssh-remote+$host $folder
+
+end it:
+qdel $id
 EOF

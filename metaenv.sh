@@ -18,6 +18,11 @@ if [[ $HOME == /storage/* ]]; then
 fi
 unset -f metaenv_path_add
 
+# Tab completion of job ids and images, only for a terminal
+if [[ $- == *i* ]]; then
+    source "$METAENV_DIR/completion.bash"
+fi
+
 # Temporary files into the job's scratch: /tmp of a node has a small limit, and some libraries (and Singularity, when it
 # builds or pulls an image) write large intermediate results there.
 tmp-to-scratch() {

@@ -20,12 +20,32 @@ fi
 id=${f[0]} state=${f[1]} host=${f[2]%%[:+]*} out_path=${f[3]#*:} err_path=${f[4]#*:} join=${f[5]} exit_status=${f[6]}
 
 # with `qsub -j oe` the errors are in the output
+joined=0
 if [[ $stream == err && $join == oe ]]; then
-    echo "the job joins its errors into its output (-j oe), showing the output"
+    joined=1
     stream=out
 fi
 
-echo "job $id: state $state${host:+, node $host}${exit_status:+, exit status $exit_status}"
+case $state in
+    R) status=running ;;
+    F) status=finished ;;
+    Q) status=queued ;;
+    H) status=held ;;
+    W) status=waiting ;;
+    *) status="state $state" ;;
+esac
+echo "job $id"
+echo "  state    $status"
+if [[ -n $host ]]; then
+    echo "  node     $host"
+fi
+if [[ -n $exit_status ]]; then
+    echo "  exit     $exit_status"
+fi
+echo
+if (( joined )); then
+    echo "the job joins its errors into its output (-j oe), showing the output"
+fi
 case $state in
     R)
         spool=/var/spool/pbs/spool/$id.$([[ $stream == out ]] && echo OU || echo ER)

@@ -39,7 +39,10 @@ finish() {
 }
 trap finish EXIT
 
-echo "job ${PBS_JOBID:-?} on $(hostname -f): $REPO @ $COMMIT"
+echo "job ${PBS_JOBID:-?}"
+echo "  node     $(hostname -f)"
+echo "  repo     $REPO"
+echo "  commit   $COMMIT"
 git clone --quiet "$REPO" "$repo"
 git -C "$repo" checkout --quiet --detach "$COMMIT"
 
@@ -55,5 +58,7 @@ options=(-B "$SCRATCHDIR" -B "$repo:/app" --pwd /app)
 if [[ -n ${CUDA_VISIBLE_DEVICES:-} ]]; then
     options+=(--nv)
 fi
-echo "image $image, command: $CMD"
+echo "  image    $image"
+echo "  command  $CMD"
+echo
 singularity exec "${options[@]}" "$image" bash -c "$CMD"

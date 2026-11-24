@@ -8,6 +8,7 @@
         "GSSAPI",
         "kinit",
         "konos",
+        "lstrip",
         "metacentrum",
         "METAENV",
         "muni",
@@ -17,9 +18,12 @@
         "qdel",
         "qstat",
         "qsub",
+        "removeprefix",
+        "rstrip",
         "SCRATCHDIR",
         "shellcheck",
         "sinshell",
+        "startswith",
         "venv",
         "walltime"
     ]

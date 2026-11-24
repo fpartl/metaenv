@@ -30,4 +30,11 @@ else
 fi
 
 mv "$partial" "$output"
-echo "done: singularity shell $(realpath "$output")"
+printf -v image %q "$(realpath "$output")"
+cat <<EOF
+
+image $image
+
+open it:
+sinshell $image
+EOF
