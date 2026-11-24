@@ -2,8 +2,8 @@
 
 Small tools for working on [MetaCentrum](https://docs.metacentrum.cz/): sessions on the nodes, job outputs and
 Singularity images of projects. Every tool is a standalone script with `set -euo pipefail`; the comment at its top
-shows how to use it, with examples. The tools for MetaCentrum only (PBS, Singularity) are in
-[`metacentrum/`](metacentrum), the ones that run anywhere in [`bin/`](bin).
+shows how to use it, with examples. The tools that run anywhere are in [`bin/`](bin), the ones for MetaCentrum only
+(PBS, Singularity) in [`bin/metacentrum/`](bin/metacentrum).
 
 | command | where | what it does |
 |---|---|---|
@@ -38,7 +38,7 @@ Only this one home is set up. Every storage has its own home and a node logs you
 `is-run` prints an SSH command that switches the shell on the node to this home (`export HOME=…; exec bash -l`), with
 its `.bashrc`, metaenv and configuration.
 
-**Your machine.** Clone anywhere and run `install.sh` the same way. `metaenv.sh` puts `metacentrum/` on `PATH` only
+**Your machine.** Clone anywhere and run `install.sh` the same way. `metaenv.sh` puts `bin/metacentrum/` on `PATH` only
 when `HOME` is on `/storage` (MetaCentrum), so your machine gets just `bin/`: `sif-tag` and `sif-build`. `sif-build`
 needs Docker and [Apptainer](https://apptainer.org/) (`sudo dnf install apptainer`).
 
@@ -119,7 +119,7 @@ prints the commands).
 ```bash
 qsub -l select=1:ncpus=4:mem=16gb:scratch_local=20gb -l walltime=4:00:00 \
     -v REPO=<git url or path>,COMMIT=<sha>,IMAGES=<dir>,CMD='<command>',OUTPUT_TO=<dir> \
-    /storage/plzen1/home/$USER/tools/metaenv/metacentrum/sif-job
+    /storage/plzen1/home/$USER/tools/metaenv/bin/metacentrum/sif-job
 ```
 
 `sif-job` clones `REPO` into the scratch, checks out `COMMIT`, picks the image of that commit (fails at once when it

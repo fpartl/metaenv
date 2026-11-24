@@ -5,7 +5,7 @@
 
 METAENV_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
-# bin/ runs anywhere; metacentrum/ (PBS, Singularity) only on MetaCentrum, recognized by a home on /storage
+# bin/ runs anywhere; bin/metacentrum/ (PBS, Singularity) only on MetaCentrum, recognized by a home on /storage
 metaenv_path_add() {
     case ":$PATH:" in
         *":$1:"*) ;;
@@ -14,7 +14,7 @@ metaenv_path_add() {
 }
 metaenv_path_add "$METAENV_DIR/bin"
 if [[ $HOME == /storage/* ]]; then
-    metaenv_path_add "$METAENV_DIR/metacentrum"
+    metaenv_path_add "$METAENV_DIR/bin/metacentrum"
 fi
 unset -f metaenv_path_add
 

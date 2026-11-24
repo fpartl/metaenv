@@ -5,7 +5,7 @@
 #
 #   qsub -l select=1:ncpus=4:mem=16gb:scratch_local=20gb -l walltime=4:00:00 \
 #       -v REPO=<git url or path>,COMMIT=<sha>,IMAGES=<dir of images>,CMD='<command>'[,OUTPUT=output,OUTPUT_TO=<dir>] \
-#       /…/metaenv/metacentrum/sif-job
+#       /…/metaenv/bin/metacentrum/sif-job
 #
 # 1. clones REPO into the scratch and checks out COMMIT;
 # 2. takes the image `IMAGES/<name>-<tag>.sif` of that commit (name = NAME or the name of the repository, tag as in
