@@ -4,10 +4,19 @@
 # wants it sources this file by its full path.
 
 METAENV_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-case ":$PATH:" in
-    *":$METAENV_DIR/bin:"*) ;;
-    *) export PATH="$METAENV_DIR/bin:$PATH" ;;
-esac
+
+# bin/ runs anywhere; metacentrum/ (PBS, Singularity) only on MetaCentrum, recognized by a home on /storage
+metaenv_path_add() {
+    case ":$PATH:" in
+        *":$1:"*) ;;
+        *) export PATH="$1:$PATH" ;;
+    esac
+}
+metaenv_path_add "$METAENV_DIR/bin"
+if [[ $HOME == /storage/* ]]; then
+    metaenv_path_add "$METAENV_DIR/metacentrum"
+fi
+unset -f metaenv_path_add
 
 # Temporary files into the job's scratch: /tmp of a node has a small limit, and some libraries (and Singularity, when it
 # builds or pulls an image) write large intermediate results there.
