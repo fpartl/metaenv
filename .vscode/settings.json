@@ -1,0 +1,26 @@
+{
+    "cSpell.words": [
+        "Apptainer",
+        "CACHEDIR",
+        "cesnet",
+        "cpus",
+        "cuni",
+        "GSSAPI",
+        "kinit",
+        "konos",
+        "metacentrum",
+        "METAENV",
+        "muni",
+        "ncpus",
+        "ngpus",
+        "pipefail",
+        "qdel",
+        "qstat",
+        "qsub",
+        "SCRATCHDIR",
+        "shellcheck",
+        "sinshell",
+        "venv",
+        "walltime"
+    ]
+}

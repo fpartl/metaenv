@@ -1,0 +1,92 @@
+#!/bin/bash
+# A session on a MetaCentrum node: a batch job that only holds the resources, so you connect to it by SSH or VS Code
+# as many times as you like, and a dropped connection (VPN, sleep) does not end it. Ends with its walltime or `qdel`.
+#
+#   is-run                       # 2 CPUs, 16 GB RAM, 32 GB scratch, no GPU, 12 hours
+#   is-run -g 1 -m 32            # with a GPU (the default queue routes it to the GPU queues)
+#   is-run -w 48 -l cluster=konos
+
+set -euo pipefail
+
+usage() {
+    cat >&2 <<EOF
+usage: is-run [-c CPUS] [-m MEM_GB] [-s SCRATCH_GB] [-g GPUS] [-w HOURS] [-l RESOURCE=VALUE] [-q QUEUE]
+  -c  CPUs (2)          -m  memory in GB (16)     -s  local scratch in GB (32)
+  -g  GPUs (0)          -w  walltime in hours (12)
+  -l  extra resource of the node, repeatable (e.g. cluster=konos, city=plzen)
+  -q  queue (default: routed by the resources)
+EOF
+    exit 2
+}
+
+cpus=2 mem=16 scratch=32 gpus=0 hours=12 extra="" queue=()
+while getopts "c:m:s:g:w:l:q:h" opt; do
+    case $opt in
+        c) cpus=$OPTARG ;;
+        m) mem=$OPTARG ;;
+        s) scratch=$OPTARG ;;
+        g) gpus=$OPTARG ;;
+        w) hours=$OPTARG ;;
+        l) extra+=":$OPTARG" ;;
+        q) queue=(-q "$OPTARG") ;;
+        *) usage ;;
+    esac
+done
+(( OPTIND > $# )) || usage
+for number in "$cpus" "$mem" "$scratch" "$gpus" "$hours"; do
+    [[ $number =~ ^[0-9]+$ ]] || usage
+done
+
+select="select=1:ncpus=$cpus:ngpus=$gpus:mem=${mem}gb:scratch_local=${scratch}gb$extra"
+id=$(qsub -N session -m n -j oe -o /dev/null "${queue[@]}" -l "$select" -l "walltime=$hours:00:00" \
+    -- /bin/sleep infinity)
+echo "job $id submitted ($select, ${hours} h), waiting until it runs (Ctrl+C stops waiting, not the job)"
+# on EXIT, not only on Ctrl+C: also a failing qstat ends the waiting (set -e) and leaves the job queued
+waiting=1
+on_exit() {
+    if (( waiting )); then
+        echo "the job stays queued, end it with: qdel $id" >&2
+    fi
+}
+trap on_exit EXIT
+trap 'echo >&2; exit 130' INT
+
+last=""
+while true; do
+    # not $(…), it drops the empty lines of missing attributes at the end; a failure of job-info gives fewer lines
+    mapfile -t f < <(job-info "$id" job_state exec_host2 Variable_List comment)
+    if (( ${#f[@]} != 4 )); then
+        exit 1
+    fi
+    state=${f[0]} host=${f[1]%%[:+]*} comment=${f[3]}
+    if [[ $state == R ]]; then
+        waiting=0
+        break
+    fi
+    if [[ $state == F ]]; then
+        waiting=0
+        echo "the job ended without running: $comment" >&2
+        exit 1
+    fi
+    if [[ "$state $comment" != "$last" ]]; then
+        echo "  $state: $comment"
+        last="$state $comment"
+    fi
+    sleep 10
+done
+
+scratchdir=$(grep -o 'SCRATCHDIR=[^,]*' <<< "${f[2]}" | cut -d= -f2 || true)
+frontend=${METAENV_FRONTEND:-nympha.zcu.cz}
+# the node's own home is on the storage nearest to it; the shell gets this HOME (and its .bashrc) instead, and starts
+# in the folder is-run was started from (e.g. the project); %q for the remote shell, @Q for the local one, so that
+# any folder name (spaces, quotes, $) arrives as it is
+printf -v login 'export HOME=%q SCRATCHDIR=%q; cd %q && exec bash -l' "$HOME" "$scratchdir" "$PWD"
+printf -v folder %q "$PWD"
+cat <<EOF
+
+job $id runs on $host, scratch $scratchdir
+  ssh -t $host ${login@Q}                  # from a frontend
+  ssh -t -J $frontend $host ${login@Q}     # from your machine (README: SSH to the nodes)
+  code --remote ssh-remote+$host $folder
+  qdel $id
+EOF

@@ -1,0 +1,45 @@
+#!/bin/bash
+# Output (out) or error output (err) of a PBS job: `tail -f` on its node while it runs, `less` once it has finished.
+#
+#   job-log out 1234567     # also `wjo 1234567`, `wje 1234567`
+
+set -euo pipefail
+
+if (( $# != 2 )) || [[ ! $1 =~ ^(out|err)$ ]]; then
+    echo "usage: job-log <out|err> <job-id>" >&2
+    exit 2
+fi
+stream=$1
+
+# not $(…), it drops the empty lines of missing attributes at the end (Exit_status of a running job); a failure of
+# job-info gives fewer lines
+mapfile -t f < <(job-info "$2" id job_state exec_host2 Output_Path Error_Path Join_Path Exit_status)
+if (( ${#f[@]} != 7 )); then
+    exit 1
+fi
+id=${f[0]} state=${f[1]} host=${f[2]%%[:+]*} out_path=${f[3]#*:} err_path=${f[4]#*:} join=${f[5]} exit_status=${f[6]}
+
+# with `qsub -j oe` the errors are in the output
+if [[ $stream == err && $join == oe ]]; then
+    echo "the job joins its errors into its output (-j oe), showing the output"
+    stream=out
+fi
+
+echo "job $id: state $state${host:+, node $host}${exit_status:+, exit status $exit_status}"
+case $state in
+    R)
+        spool=/var/spool/pbs/spool/$id.$([[ $stream == out ]] && echo OU || echo ER)
+        exec ssh -t "$host" tail -n 100 -f "$spool"
+        ;;
+    F)
+        path=$([[ $stream == out ]] && echo "$out_path" || echo "$err_path")
+        if [[ ! -r $path ]]; then
+            echo "$path does not exist (yet)" >&2
+            exit 1
+        fi
+        exec less "$path"
+        ;;
+    *)
+        echo "the job does not run yet, nothing to show"
+        ;;
+esac

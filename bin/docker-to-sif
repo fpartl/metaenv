@@ -1,0 +1,33 @@
+#!/bin/bash
+# A Singularity image from a Docker archive (`docker save -o image.tar …`), on MetaCentrum. In a job the build runs in
+# its scratch ($SCRATCHDIR), which is much faster than the storage and has room for the temporary files.
+#
+#   docker-to-sif image.tar                 # → image.sif
+#   docker-to-sif image.tar /storage/…/x.sif
+
+set -euo pipefail
+
+if (( $# < 1 || $# > 2 )) || [[ ! -f $1 ]]; then
+    echo "usage: docker-to-sif <docker-archive.tar> [output.sif]" >&2
+    exit 2
+fi
+archive=$1
+output=${2:-${archive%.tar}.sif}
+
+# written under a temporary name and renamed at the end, so a half-written image never has the right name
+partial="$output.partial"
+trap 'rm -f "$partial"' EXIT
+
+if [[ -n ${SCRATCHDIR:-} ]]; then
+    work=$(mktemp -d "$SCRATCHDIR/docker-to-sif.XXXXXX")
+    trap 'rm -rf "$work"; rm -f "$partial"' EXIT
+    echo "building in $work"
+    cp "$archive" "$work/image.tar"
+    SINGULARITY_TMPDIR=$work singularity build "$work/image.sif" "docker-archive://$work/image.tar"
+    cp "$work/image.sif" "$partial"
+else
+    singularity build "$partial" "docker-archive://$archive"
+fi
+
+mv "$partial" "$output"
+echo "done: singularity shell $(realpath "$output")"

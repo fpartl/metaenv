@@ -1,0 +1,61 @@
+#!/bin/bash
+# On your machine, in the root of a project: the Singularity image of its environment, `<images>/<name>-<tag>.sif`
+# (tag = sif-tag), built from its Dockerfile by Docker and Apptainer. Does nothing when the image exists.
+#
+#   sif-build /storage/<storage>/projects/<project>/images     # the folder must exist (mkdir -p)
+#   sif-build -n myproject /storage/…/images                   # name other than the folder of the project
+
+set -euo pipefail
+
+usage() {
+    echo "usage: sif-build [-n NAME] <images-dir>" >&2
+    exit 2
+}
+
+name=$(basename "$PWD")
+while getopts "n:h" opt; do
+    case $opt in
+        n) name=$OPTARG ;;
+        *) usage ;;
+    esac
+done
+shift $((OPTIND - 1))
+(( $# == 1 )) || usage
+images=$1
+if [[ ! -d $images ]]; then
+    echo "$images does not exist, create it first: mkdir -p $images" >&2
+    exit 1
+fi
+
+name=${name,,}   # Docker allows only lowercase names
+tag=$(sif-tag .)
+image="$images/$name-$tag.sif"
+if [[ -f $image ]]; then
+    echo "$image exists"
+    exit 0
+fi
+
+# --ssh: the build may install private dependencies over SSH (`RUN --mount=type=ssh` in the Dockerfile); only with
+# a running ssh-agent, `--ssh default` without one is an error even when the Dockerfile does not use it
+ssh=()
+if [[ -n ${SSH_AUTH_SOCK:-} ]]; then
+    ssh=(--ssh default)
+fi
+docker build "${ssh[@]}" -t "$name:$tag" .
+
+if ! command -v apptainer &> /dev/null; then
+    cat >&2 <<EOF
+apptainer is missing on this machine (install it, e.g. fedora_setup). Without it, convert the image on MetaCentrum:
+  docker save -o $images/$name-$tag.tar $name:$tag
+  docker-to-sif $images/$name-$tag.tar $image      # in a job (is-run), then delete the .tar
+EOF
+    exit 1
+fi
+
+# written under a temporary name and renamed at the end, so a half-written image never has the right name;
+# the temporary files of apptainer go to /var/tmp (on disk), /tmp is often a small tmpfs
+partial="$image.partial"
+trap 'rm -f "$partial"' EXIT
+APPTAINER_TMPDIR=${APPTAINER_TMPDIR:-/var/tmp} apptainer build "$partial" "docker-daemon://$name:$tag"
+mv "$partial" "$image"
+echo "$image"

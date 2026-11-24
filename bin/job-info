@@ -1,0 +1,32 @@
+#!/bin/bash
+# Attributes of a PBS job (also a finished one), one per line in the given order, an empty line when missing:
+#
+#   job-info 1234567 job_state exec_host2 Output_Path     # `id` is the full job id; all attributes: qstat -xwf <id>
+
+set -euo pipefail
+
+if (( $# < 2 )); then
+    echo "usage: job-info <job-id> <attribute>..." >&2
+    exit 2
+fi
+id=$1
+shift
+
+# plain `qstat -f` instead of `-F json`, whose escaping of the job's environment is not always valid JSON
+qstat -x -w -f "$id" | python3 -c '
+import sys
+
+attrs, key = {}, None
+for line in sys.stdin:
+    line = line.rstrip("\n")
+    if line.startswith("Job Id: "):
+        attrs["id"] = line.removeprefix("Job Id: ")
+    elif line.startswith("\t") and key:  # continuation of a long value
+        attrs[key] += line.lstrip("\t")
+    elif " = " in line:
+        key, value = line.strip().split(" = ", 1)
+        attrs[key] = value
+
+for name in sys.argv[1:]:
+    print(attrs.get(name, ""))
+' "$@"
