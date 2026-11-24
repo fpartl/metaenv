@@ -137,4 +137,13 @@ cleaned at the end, unless the copying failed. `NAME` overrides the name of the 
 
 ## Development
 
-`pre-commit install` once; the hooks run `shellcheck` on the scripts.
+The only prerequisite is [uv](https://docs.astral.sh/uv/getting-started/installation/); `pre-commit` is a dev
+dependency in [`pyproject.toml`](pyproject.toml) (not a Python package, only the tools). After the clone:
+
+```bash
+./.githooks/init.sh
+```
+
+It runs `uv sync` (the `.venv` with pre-commit) and `uv run pre-commit install`, so every commit checks the scripts by
+`shellcheck` and a few other hooks ([`.pre-commit-config.yaml`](.pre-commit-config.yaml)). All files at once:
+`uv run pre-commit run --all-files`.
