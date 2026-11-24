@@ -1,6 +1,7 @@
 #!/bin/bash
 # A session on a MetaCentrum node: a batch job that only holds the resources, so you connect to it by SSH or VS Code
 # as many times as you like, and a dropped connection (VPN, sleep) does not end it. Ends with its walltime or `qdel`.
+# Prints the final qsub command and submits it only after a confirmation.
 #
 #   is-run                       # 2 CPUs, 16 GB RAM, 32 GB scratch, no GPU, 12 hours
 #   is-run -g 1 -m 32            # with a GPU (the default queue routes it to the GPU queues)
@@ -38,8 +39,14 @@ for number in "$cpus" "$mem" "$scratch" "$gpus" "$hours"; do
 done
 
 select="select=1:ncpus=$cpus:ngpus=$gpus:mem=${mem}gb:scratch_local=${scratch}gb$extra"
-id=$(qsub -N session -m n -j oe -o /dev/null "${queue[@]}" -l "$select" -l "walltime=$hours:00:00" \
+submit=(qsub -N session -m n -j oe -o /dev/null "${queue[@]}" -l "$select" -l "walltime=$hours:00:00"
     -- /bin/sleep infinity)
+# the exact command, to check the resources before they are requested
+printf -v shown "%q " "${submit[@]}"
+echo "${shown% }"
+read -r -p "submit? [y/N] " answer
+[[ $answer =~ ^[YyAa]$ ]] || exit 1
+id=$("${submit[@]}")
 echo "job $id submitted ($select, ${hours} h), waiting until it runs (Ctrl+C stops waiting, not the job)"
 # on EXIT, not only on Ctrl+C: also a failing qstat ends the waiting (set -e) and leaves the job queued
 waiting=1

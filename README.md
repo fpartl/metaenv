@@ -50,10 +50,11 @@ is-run -g 1 -m 32            # with a GPU, the default queue routes it to the GP
 is-run -w 48 -l cluster=konos
 ```
 
-The session is a batch job that only sleeps and holds the resources. `is-run` waits until it runs and prints the node,
-its scratch and the commands to connect (SSH, VS Code), which open the folder `is-run` was started from, so start it
-in the project you work on. Ctrl+C stops the waiting, not the job. Connect as many times as you like, a dropped
-connection does not end the session; end it by `qdel <id>` (or let the walltime run out).
+The session is a batch job that only sleeps and holds the resources. `is-run` first prints the final `qsub` command
+and submits it only after you confirm it (`y`). Then it waits until the job runs and prints the node, its scratch and
+the commands to connect (SSH, VS Code), which open the folder `is-run` was started from, so start it in the project you
+work on. Ctrl+C stops the waiting, not the job. Connect as many times as you like, a dropped connection does not end
+the session; end it by `qdel <id>` (or let the walltime run out).
 
 ### Temporary files in the scratch
 
