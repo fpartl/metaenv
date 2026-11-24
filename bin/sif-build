@@ -53,7 +53,7 @@ apptainer is missing on this machine (install it, e.g. fedora_setup); without it
 here:
 docker save -o $images/$name-$tag.tar $name:$tag
 
-in a job on MetaCentrum (is-run), then delete the .tar:
+in a job on MetaCentrum (job-session), then delete the .tar:
 docker-to-sif $images/$name-$tag.tar $image
 EOF
     exit 1

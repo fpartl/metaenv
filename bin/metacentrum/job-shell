@@ -1,0 +1,74 @@
+#!/bin/bash
+# Your shell on a MetaCentrum node inside your job running there (pbs_attach): with the CPUs and memory of the job, the
+# home metaenv is installed in, the job's scratch, starting in the folder the job was submitted from (job-session: the
+# project). Meant as the RemoteCommand of the nodes in ~/.ssh/config (README: SSH to the nodes), so that `ssh <node>`
+# and VS Code (Remote - SSH) land in the job. Without an id it takes your session (job-session, named session-*) on the
+# node; batch jobs only by their id. Refuses without a session on the node, work on a node belongs to a job; with more
+# of them it asks which one in a terminal, and refuses without one (VS Code) rather than to guess.
+#
+#   job-shell               # your session on this node
+#   job-shell <job-id>
+
+set -euo pipefail
+
+if (( $# > 1 )); then
+    echo "usage: job-shell [job-id]" >&2
+    exit 2
+fi
+
+# runs in the node's own home without metaenv (RemoteCommand by the full path): job-info is next to this script
+PATH=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd):$PATH
+
+host=$(hostname -f)
+id=${1:-}
+if [[ -z $id ]]; then
+    # my running sessions (job-session) on this node, each with its name and folder to tell them apart
+    ids=() labels=()
+    for job in $(qselect -u "$USER" -s R); do
+        mapfile -t f < <(job-info "$job" exec_host2 Job_Name Variable_List)
+        if [[ ${f[0]%%[:+]*} == "$host" && ${f[1]} == session-* ]]; then
+            workdir=$(grep -o 'PBS_O_WORKDIR=[^,]*' <<< "${f[2]}" | cut -d= -f2 || true)
+            ids+=("$job")
+            labels+=("$job  ${f[1]}  $workdir")
+        fi
+    done
+
+    if (( ${#ids[@]} == 0 )); then
+        {
+            echo "job-shell: no running session of yours on $host, work on a node belongs to a job (job-session)"
+            echo "into a batch job: ssh -o RemoteCommand='$0 <job-id>' $host"
+            echo "to reach the node itself (e.g. the scratch of a failed job): ssh -o RemoteCommand=none $host"
+        } >&2
+        exit 1
+    elif (( ${#ids[@]} == 1 )); then
+        id=${ids[0]}
+    elif [[ -t 0 ]]; then
+        echo "job-shell: more of your sessions run on $host, which one?" >&2
+        PS3="job: "
+        select label in "${labels[@]}"; do
+            if [[ -n $label ]]; then
+                id=${ids[REPLY - 1]}
+                break
+            fi
+        done
+        [[ -n $id ]] || exit 1   # end of input (Ctrl+D)
+    else
+        {
+            echo "job-shell: more of your sessions run on $host and there is no terminal to ask which one:"
+            printf '  %s\n' "${labels[@]}"
+            echo "end the ones you do not need (qdel), or choose one: ssh -o RemoteCommand='$0 <job-id>' $host"
+        } >&2
+        exit 1
+    fi
+fi
+
+mapfile -t f < <(job-info "$id" Variable_List)
+var() {
+    grep -o "$1=[^,]*" <<< "${f[0]}" | cut -d= -f2 || true
+}
+home=$(var PBS_O_HOME) workdir=$(var PBS_O_WORKDIR)
+export HOME=${home:-$HOME} SCRATCHDIR
+SCRATCHDIR=$(var SCRATCHDIR)
+cd "${workdir:-$HOME}"
+echo "job-shell: job $id" >&2
+exec pbs_attach -j "$id" bash -l

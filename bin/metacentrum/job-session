@@ -3,15 +3,15 @@
 # as many times as you like, and a dropped connection (VPN, sleep) does not end it. Ends with its walltime or `qdel`.
 # Prints the final qsub command and submits it only after a confirmation.
 #
-#   is-run                       # 2 CPUs, 16 GB RAM, 32 GB scratch, no GPU, 8 hours
-#   is-run -g 1 -m 32            # with a GPU (the default queue routes it to the GPU queues)
-#   is-run -w 48 -l cluster=konos
+#   job-session                  # 2 CPUs, 16 GB RAM, 32 GB scratch, no GPU, 8 hours
+#   job-session -g 1 -m 32       # with a GPU (the default queue routes it to the GPU queues)
+#   job-session -w 48 -l cluster=konos
 
 set -euo pipefail
 
 usage() {
     cat >&2 <<EOF
-usage: is-run [options]
+usage: job-session [options]
   -c CPUS             CPUs (2)
   -g GPUS             GPUs (0)
   -l RESOURCE=VALUE   extra resource of the node, repeatable (e.g. cluster=konos, city=plzen)
@@ -45,7 +45,7 @@ select="select=1:ncpus=$cpus:ngpus=$gpus:mem=${mem}gb:scratch_local=${scratch}gb
 # named after the project (the repository, or the folder outside one) so that qstat shows which session is which; PBS
 # wants a name starting with a letter and without special characters
 project=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)")
-name=is-${project//[^A-Za-z0-9_.-]/_}
+name=session-${project//[^A-Za-z0-9_.-]/_}
 submit=(qsub -N "$name" -m n -j oe -o /dev/null "${queue[@]}" -l "$select" -l "walltime=$hours:00:00"
     -- /bin/sleep infinity)
 # the exact command, to check the resources before they are requested
@@ -98,11 +98,11 @@ while true; do
 done
 
 scratchdir=$(grep -o 'SCRATCHDIR=[^,]*' <<< "${f[2]}" | cut -d= -f2 || true)
-frontend=${METAENV_FRONTEND:-nympha.zcu.cz}
-# the node's own home is on the storage nearest to it; the shell gets this HOME (and its .bashrc) instead, and starts
-# in the folder is-run was started from (e.g. the project); %q for the remote shell, @Q for the local one, so that
-# any folder name (spaces, quotes, $) arrives as it is
-printf -v login 'export HOME=%q SCRATCHDIR=%q; cd %q && exec bash -l' "$HOME" "$scratchdir" "$PWD"
+# An SSH login to the node lands outside the job, in the node's own home; job-shell moves the shell into the job
+# (pbs_attach: its CPUs and memory), with this HOME, the scratch and this folder. From your machine `ssh <node>` runs it
+# by RemoteCommand in ~/.ssh/config (README: SSH to the nodes), and so does VS Code.
+job_shell=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/job-shell
+printf -v from_frontend 'ssh -t %q %q %q' "$host" "$job_shell" "$id"
 printf -v folder %q "$PWD"
 # the commands without indentation and on lines of their own, so that a triple click selects exactly one of them
 cat <<EOF
@@ -113,12 +113,12 @@ job $id runs
   ends     $(date -d "+$hours hours" '+%Y-%m-%d %H:%M') (extend it by qextend)
 
 from a frontend:
-ssh -t $host ${login@Q}
+$from_frontend
 
 from your machine (README: SSH to the nodes):
-ssh -t -J $frontend $host ${login@Q}
+ssh $host
 
-VS Code:
+VS Code (README: SSH to the nodes):
 code --remote ssh-remote+$host $folder
 
 end it:
