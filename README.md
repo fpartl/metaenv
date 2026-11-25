@@ -11,7 +11,7 @@ comment at its top shows how to use it, with examples. `sif` runs anywhere ([`bi
 | `job session [options]` | frontend | a session on a node, prints how to connect (SSH, VS Code); options by `-h` |
 | `job list [-x]` | frontend | your jobs: state, name, node, time of the walltime, folder; `-x` also finished ones |
 | `job info [-c] [-e\|-ee] [-v] [id]` | frontend, job | a job (also finished); `-c` connect, `-e` its use, `-v` all |
-| `job shell [id]` | node | a shell inside your job on this node; the RemoteCommand of the nodes (SSH, VS Code) |
+| `job shell [id]`, `job attach` | node, frontend | a shell inside your job; the RemoteCommand of the nodes |
 | `job extend [id] <hours>` | frontend, job | more hours for a running job (`qextend`) |
 | `job kill <id>...` | frontend | ends jobs (`qdel`) after showing which ones and a confirmation |
 | `job log out\|err <id>`, `wjo`, `wje` | frontend | output / errors of a job: `tail -f` while it runs, else `less` |
