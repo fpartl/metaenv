@@ -8,6 +8,21 @@ _metaenv_complete_words() {
     mapfile -t COMPREPLY < <(compgen -W "$1" -- "${COMP_WORDS[COMP_CWORD]}")
 }
 
+# Drops from COMPREPLY what is already on the command line after `<command> <subcommand>` (a job id also by its short
+# form, as job list shows it).
+_metaenv_drop_given() {
+    local word given=" " kept=()
+    for word in "${COMP_WORDS[@]:2:COMP_CWORD-2}"; do
+        given+="${word%%.*} "
+    done
+    for word in "${COMPREPLY[@]}"; do
+        if [[ $given != *" ${word%%.*} "* ]]; then
+            kept+=("$word")
+        fi
+    done
+    COMPREPLY=("${kept[@]}")
+}
+
 # Completes the current word with files matching the glob (e.g. '*.sif') and folders.
 _metaenv_complete_file() {
     local cur=${COMP_WORDS[COMP_CWORD]}
@@ -83,8 +98,16 @@ _metaenv_job() {
     case ${COMP_WORDS[1]} in
         list) _metaenv_complete_words "-x" ;;
         info)
-            if [[ ${COMP_WORDS[COMP_CWORD]} == -* ]]; then
+            # one id: once it is there, only the options not given yet
+            local word id_given=0
+            for word in "${COMP_WORDS[@]:2:COMP_CWORD-2}"; do
+                if [[ $word != -* ]]; then
+                    id_given=1
+                fi
+            done
+            if [[ ${COMP_WORDS[COMP_CWORD]} == -* ]] || (( id_given )); then
                 _metaenv_complete_words "-c -e -v"
+                _metaenv_drop_given
             elif _metaenv_fzf_asked; then
                 _metaenv_complete_job -x
             else
@@ -104,7 +127,11 @@ _metaenv_job() {
                 _metaenv_complete_job
             fi
             ;;
-        kill) _metaenv_complete_job ;;
+        kill)
+            # more ids, each once
+            _metaenv_complete_job
+            _metaenv_drop_given
+            ;;
         log)
             if (( COMP_CWORD == 2 )); then
                 _metaenv_complete_words "out err"
