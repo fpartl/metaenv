@@ -68,11 +68,11 @@ trap 'echo >&2; exit 130' INT
 last=""
 while true; do
     # not $(…), it drops the empty lines of missing attributes at the end; a failure of job-info gives fewer lines
-    mapfile -t f < <(job-info "$id" job_state exec_host2 Variable_List comment)
-    if (( ${#f[@]} != 4 )); then
+    mapfile -t f < <(job-info "$id" job_state comment)
+    if (( ${#f[@]} != 2 )); then
         exit 1
     fi
-    state=${f[0]} host=${f[1]%%[:+]*} comment=${f[3]}
+    state=${f[0]} comment=${f[1]}
     if [[ $state == R ]]; then
         waiting=0
         break
@@ -96,30 +96,6 @@ while true; do
     sleep 10
 done
 
-scratchdir=$(grep -o 'SCRATCHDIR=[^,]*' <<< "${f[2]}" | cut -d= -f2 || true)
-# An SSH login to the node lands outside the job, in the node's own home; job-shell moves the shell into the job
-# (pbs_attach: its CPUs and memory), with this HOME, the scratch and this folder. From your machine `ssh <node>` runs it
-# by RemoteCommand in ~/.ssh/config (README: SSH to the nodes), and so does VS Code.
-job_shell=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/job-shell
-printf -v from_frontend 'ssh -t %q %q %q' "$host" "$job_shell" "$id"
-printf -v folder %q "$PWD"
-# the commands without indentation and on lines of their own, so that a triple click selects exactly one of them
-cat <<EOF
-
-job $id runs
-  node     $host
-  scratch  $scratchdir
-  ends     $(date -d "+$hours hours" '+%Y-%m-%d %H:%M') (extend it by job-extend)
-
-from a frontend:
-$from_frontend
-
-from your machine (README: SSH to the nodes):
-ssh $host
-
-VS Code (README: SSH to the nodes):
-code --remote ssh-remote+$host $folder
-
-end it:
-job-kill $id
-EOF
+# the job and how to connect to it; `job-info -c <id>` prints it again (e.g. after this terminal is closed)
+echo
+exec job-info -c "$id"

@@ -12,7 +12,7 @@ shows how to use it, with examples. The tools that run anywhere are in [`bin/`](
 | `job-extend [id] <hours>` | frontend, job | more hours for a running job (`qextend`); no id: the job you are in |
 | `job-kill <id>...` | frontend | ends jobs (`qdel`) after showing which ones and a confirmation |
 | `wjo <id>`, `wje <id>` | frontend | output / errors of a job: `tail -f` while it runs, `less` once finished |
-| `job-info [id [attribute...]]` | frontend, job | a job (also finished), or its attributes; no id: the job you are in |
+| `job-info [-c\|-v] [id]` | frontend, job | a job (also finished), `-c` how to connect, `-v` all; no id: yours |
 | `job-shell [job-id]` | node | a shell inside your job on this node; the RemoteCommand of the nodes (SSH, VS Code) |
 | `sinshell <image.sif> [command...]` | node | a shell or a command in an image, with the GPUs and the job's scratch |
 | `docker-to-sif <archive.tar> [out.sif]` | node | `.sif` from a `docker save` archive, built in the job's scratch |
@@ -65,8 +65,9 @@ job-session -w 48 -l cluster=konos
 The session is a batch job that only sleeps and holds the resources. `job-session` first prints the final `qsub`
 command and submits it only after you confirm it (`y`). Then it waits until the job runs and prints the node, its
 scratch and the commands to connect (SSH, VS Code), which open the folder `job-session` was started from, so start it
-in the project you work on. Ctrl+C stops the waiting, not the job. Connect as many times as you like, a dropped
-connection does not end the session; end it by `job-kill <id>` (or let the walltime run out).
+in the project you work on. Ctrl+C stops the waiting, not the job; `job-info -c <id>` prints it all again (`job-list`
+shows the id). Connect as many times as you like, a dropped connection does not end the session; end it by `job-kill
+<id>` (or let the walltime run out).
 
 A job is no container: its processes run on the node next to those of other users, PBS only puts them into a cgroup
 with the CPUs and memory of the job (beyond the memory the kernel kills a process of that job, not of others). An SSH

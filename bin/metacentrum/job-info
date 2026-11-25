@@ -1,16 +1,31 @@
 #!/bin/bash
-# A PBS job (also a finished one): an overview, or the given attributes one per line in their order (an empty line when
-# missing). Without an id, the job you are in (PBS_JOBID: a batch job, the shell of job-shell).
+# A PBS job (also a finished one): an overview, with -c also the commands to connect to it while it runs (as job-session
+# prints them), -v all of the extras (so far only -c); or the given attributes one per line in their order (an empty
+# line when missing). Without an id, the job you are in (PBS_JOBID: a batch job, the shell of job-shell).
 #
 #   job-info                                         # the job you are in
-#   job-info 1234567                                 # its state, node, resources, time and folders
+#   job-info -c 1234567                              # its state, resources, time, folders and how to connect
+#   job-info -v 1234567                              # all of it
 #   job-info 1234567 job_state exec_host2 Output_Path   # `id` is the full job id; all attributes: qstat -xwf <id>
 
 set -euo pipefail
 
-if (( $# == 0 )) && [[ -z ${PBS_JOBID:-} ]]; then
-    echo "usage: job-info [job-id [attribute...]] (without an id only in a job)" >&2
+usage() {
+    echo "usage: job-info [-c|-v] [job-id] | job-info <job-id> <attribute>... (without an id only in a job)" >&2
     exit 2
+}
+
+connect=0
+while getopts "cv" opt; do
+    case $opt in
+        c) connect=1 ;;
+        v) connect=1 ;;   # -v: every extra, so far only -c
+        *) usage ;;
+    esac
+done
+shift $(( OPTIND - 1 ))
+if (( $# == 0 )) && [[ -z ${PBS_JOBID:-} ]] || (( connect && $# > 1 )); then
+    usage
 fi
 id=${1:-$PBS_JOBID}
 shift || true
@@ -44,28 +59,91 @@ fi
 
 # not $(…), it drops the empty lines of missing attributes; a failure of qstat (unknown job, its message goes to the
 # terminal) leaves no id
-mapfile -t f < <(attributes id Job_Name job_state exec_host2 Resource_List.select Resource_List.walltime \
-    resources_used.walltime Variable_List comment)
+mapfile -t f < <(attributes id Job_Name job_state comment Exit_status exec_host2 Resource_List.ncpus \
+    Resource_List.mem Resource_List.ngpus Resource_List.scratch_local Resource_List.scratch_ssd \
+    Resource_List.scratch_shared Resource_List.scratch_shm stime Resource_List.walltime resources_used.walltime \
+    Variable_List)
 if [[ -z ${f[0]} ]]; then
     exit 1
 fi
+short_id=${f[0]%%.*} name=${f[1]} state=${f[2]} comment=${f[3]} exit_status=${f[4]} host=${f[5]%%[:+]*}
+stime=${f[13]} walltime=${f[14]} used=${f[15]}
 var() {
-    grep -o "$1=[^,]*" <<< "${f[7]}" | cut -d= -f2 || true
+    grep -o "$1=[^,]*" <<< "${f[16]}" | cut -d= -f2 || true
 }
-host=${f[3]%%[:+]*}
-time="${f[6]:-0:00:00} of ${f[5]}"
-if [[ ${f[2]} == R ]]; then
-    IFS=: read -r wh wm ws <<< "${f[5]}"
-    IFS=: read -r uh um us <<< "${f[6]:-0:0:0}"
-    left=$(( (10#$wh - 10#$uh) * 3600 + (10#$wm - 10#$um) * 60 + 10#$ws - 10#$us ))
-    time+=", ends $(date -d "+$left seconds" '+%Y-%m-%d %H:%M')"
+scratchdir=$(var SCRATCHDIR) folder=$(var PBS_O_WORKDIR)
+
+# PBS's comment repeats the node, resources and start of a running job; it tells why one waits or how it ended
+case $state in
+    R) state=running comment="" ;;
+    Q) state=queued ;;
+    H) state=held ;;
+    W) state=waiting ;;
+    F) state="finished${exit_status:+, exit status $exit_status}" ;;
+esac
+
+resources="${f[6]} CPUs, ${f[7]} memory"
+if [[ ${f[8]:-0} != 0 ]]; then
+    resources+=", ${f[8]} GPUs"
+fi
+scratch_size=""
+for i in 9 10 11 12; do
+    scratch_size=${scratch_size:-${f[i]}}
+done
+
+time="walltime $walltime"
+if [[ -n $stime ]]; then
+    IFS=: read -r h m s <<< "$walltime"
+    start=$(date -d "$stime" +%s)
+    end=$(( start + 10#$h * 3600 + 10#$m * 60 + 10#$s ))
+    # the end without its date on the day of the start
+    end_format='+%Y-%m-%d %H:%M'
+    if [[ $(date -d "@$start" +%F) == $(date -d "@$end" +%F) ]]; then
+        end_format=+%H:%M
+    fi
+    time="$(date -d "@$start" '+%Y-%m-%d %H:%M') – $(date -d "@$end" "$end_format")"
+    time+=", used ${used:-0:00:00} of $walltime"
+fi
+
+cat <<EOF
+job $short_id  $name
+  state      $state${comment:+ ($comment)}
+  node       ${host:--}
+  resources  $resources
+  scratch    ${scratchdir:--}${scratch_size:+ ($scratch_size)}
+  time       $time
+  folder     $folder
+EOF
+
+if (( ! connect )) || [[ $state != running ]]; then
+    exit 0
+fi
+
+# An SSH login to the node lands outside the job, in the node's own home; job-shell moves the shell into the job
+# (pbs_attach: its CPUs and memory), with the home metaenv is installed in, the scratch and the folder. From your
+# machine `ssh <node>` runs it by RemoteCommand in ~/.ssh/config (README: SSH to the nodes), and so does VS Code, but
+# without an id only for a session (job-session); a batch job needs its id.
+job_shell=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/job-shell
+printf -v from_frontend 'ssh -t %q %q %q' "$host" "$job_shell" "$short_id"
+# the commands without indentation and on lines of their own, so that a triple click selects exactly one of them
+echo
+echo "from a frontend:"
+echo "$from_frontend"
+echo
+echo "from your machine (README: SSH to the nodes):"
+if [[ $name == session-* ]]; then
+    echo "ssh $host"
+    echo
+    echo "VS Code (README: SSH to the nodes):"
+    printf 'code --remote ssh-remote+%s %q\n' "$host" "$folder"
+else
+    echo "ssh -o RemoteCommand='$job_shell $short_id' $host"
 fi
 cat <<EOF
-job ${f[0]%%.*}  ${f[1]}
-  state      ${f[2]}${f[8]:+ (${f[8]})}
-  node       ${host:--}
-  resources  ${f[4]}
-  time       $time
-  scratch    $(var SCRATCHDIR)
-  folder     $(var PBS_O_WORKDIR)
+
+extend it:
+job-extend $short_id <hours>
+
+end it:
+job-kill $short_id
 EOF
