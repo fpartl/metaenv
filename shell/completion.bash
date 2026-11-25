@@ -50,15 +50,19 @@ _metaenv_jobs() {
     qstat -w -u "$USER" "$@" 2>/dev/null | awk '$1 ~ /^[0-9]/ { print $1, $10, $4, $3 }' | tac
 }
 
+# Whether the current word asks for fzf: it ends with the trigger (**) and fzf's completion is loaded.
+_metaenv_fzf_asked() {
+    [[ ${COMP_WORDS[COMP_CWORD]} == *"${FZF_COMPLETION_TRIGGER-**}" ]] && declare -F _fzf_complete >/dev/null
+}
+
 # Completes the current word with the jobs `_metaenv_jobs "$@"` lists: by fzf after the trigger (**), else by plain
 # bash completion of the ids.
 _metaenv_complete_job() {
-    local cur=${COMP_WORDS[COMP_CWORD]}
-    if [[ $cur == *"${FZF_COMPLETION_TRIGGER-**}" ]] && declare -F _fzf_complete >/dev/null; then
+    if _metaenv_fzf_asked; then
         _metaenv_fzf_job "$@"
         return
     fi
-    mapfile -t COMPREPLY < <(compgen -W "$(_metaenv_jobs "$@" | cut -d' ' -f1)" -- "$cur")
+    mapfile -t COMPREPLY < <(compgen -W "$(_metaenv_jobs "$@" | cut -d' ' -f1)" -- "${COMP_WORDS[COMP_CWORD]}")
 }
 
 # fzf shows the whole lines, _metaenv_fzf_job_post (found by fzf by the name of the caller) keeps only the id
@@ -69,7 +73,8 @@ _metaenv_fzf_job_post() {
     cut -d' ' -f1
 }
 
-# job <command>: ids of unfinished jobs for shell, extend and kill, also of finished ones for info and log
+# job <command>: ids of the jobs that have not finished, as `job list`; also of finished ones for log, whose output is
+# mostly read then, and in fzf for info, where the state shows and finished ones can be filtered out
 _metaenv_job() {
     if (( COMP_CWORD == 1 )); then
         _metaenv_complete_words "session list info shell extend kill log"
@@ -80,8 +85,10 @@ _metaenv_job() {
         info)
             if [[ ${COMP_WORDS[COMP_CWORD]} == -* ]]; then
                 _metaenv_complete_words "-c -e -v"
-            else
+            elif _metaenv_fzf_asked; then
                 _metaenv_complete_job -x
+            else
+                _metaenv_complete_job
             fi
             ;;
         shell)

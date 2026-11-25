@@ -51,10 +51,10 @@ Docker and [Apptainer](https://apptainer.org/) (`sudo dnf install apptainer`).
 ### Tab completion
 
 In a terminal, `metaenv.sh` also loads [`shell/completion.bash`](shell/completion.bash): Tab completes the commands
-of `job` and `sif`, then your job ids (newest first; also finished jobs in `job info`, `job log`, `wjo`, `wje`; also
-in `qdel` and `qextend`), `.sif` images and `.tar` archives. With [fzf](https://github.com/junegunn/fzf) loaded in the
-shell (`eval "$(fzf --bash)"`), `job info **<Tab>` opens a list of the jobs with their state, name and queue, and puts
-the id of the chosen one on the command line.
+of `job` and `sif`, then the ids of your jobs that have not finished, as `job list` (newest first; also in `qdel` and
+`qextend`; `job log`, `wjo` and `wje` also finished ones, see `job list -x`), `.sif` images and `.tar` archives.
+With [fzf](https://github.com/junegunn/fzf) loaded in the shell (`eval "$(fzf --bash)"`), `job info **<Tab>` opens a
+list of the jobs with their state, name and queue, and puts the id of the chosen one on the command line.
 
 Aliases are up to you, e.g. `alias ji='job info'` in `~/.bashrc`.
 
