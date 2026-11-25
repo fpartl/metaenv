@@ -127,6 +127,20 @@ _metaenv_job() {
         return
     fi
     case ${COMP_WORDS[1]} in
+        session)
+            # its options (job session -h), each once but -l; their values are numbers or the user's own, not completed
+            if [[ ${COMP_WORDS[COMP_CWORD-1]} == -[cglmqsw] ]]; then
+                return
+            fi
+            if [[ ${COMP_WORDS[COMP_CWORD]} == -* ]]; then
+                _metaenv_complete_words "-c -g -m -s -w -q -l -h"
+                local options=("${COMPREPLY[@]}")
+                _metaenv_drop_given 2
+                if [[ " ${options[*]} " == *" -l "* && " ${COMPREPLY[*]} " != *" -l "* ]]; then
+                    COMPREPLY+=(-l)
+                fi
+            fi
+            ;;
         list)
             if (( COMP_CWORD == 2 )); then
                 _metaenv_complete_words "-x"
