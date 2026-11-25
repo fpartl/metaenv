@@ -65,9 +65,14 @@ if [[ -z $id ]]; then
     fi
 fi
 
-mapfile -t f < <("$here/info" "$id" Variable_List)
+# the full id (with the server): pbs_attach does not find a job by the short one; an unknown job leaves none
+mapfile -t f < <("$here/info" "$id" id Variable_List)
+if [[ -z ${f[0]} ]]; then
+    exit 1
+fi
+id=${f[0]}
 var() {
-    grep -o "$1=[^,]*" <<< "${f[0]}" | cut -d= -f2 || true
+    grep -o "$1=[^,]*" <<< "${f[1]}" | cut -d= -f2 || true
 }
 home=$(var PBS_O_HOME) workdir=$(var PBS_O_WORKDIR)
 export HOME=${home:-$HOME} SCRATCHDIR PBS_JOBID=$id   # PBS_JOBID as in a batch job (job info without an id)
@@ -92,6 +97,8 @@ pbs_attach -j "$id" bash -l || status=$?
 # leaving the shell does not end the job: a reminder, while it still runs (its walltime may have ended it)
 mapfile -t f < <("$here/info" "$id" job_state Job_Name)
 if [[ ${f[0]:-} == R ]]; then
-    echo "job shell: job $id (${f[1]}) still runs and holds its resources; end it on a frontend: job kill $id" >&2
+    short_id=${id%%.*}
+    echo "job shell: job $short_id (${f[1]}) still runs and holds its resources; end it on a frontend:" >&2
+    echo "job kill $short_id" >&2
 fi
 exit "$status"
