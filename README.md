@@ -10,7 +10,7 @@ comment at its top shows how to use it, with examples. `sif` runs anywhere ([`bi
 |---|---|---|
 | `job session [options]` | frontend | a session on a node, prints how to connect (SSH, VS Code); options by `-h` |
 | `job list [-x]` | frontend | your jobs: state, name, node, time of the walltime, folder; `-x` also finished ones |
-| `job info [-c] [-e] [-v] [id]` | frontend, job | a job (also finished); `-c` how to connect, `-e` its use, `-v` all |
+| `job info [-c] [-e\|-ee] [-v] [id]` | frontend, job | a job (also finished); `-c` connect, `-e` its use, `-v` all |
 | `job shell [id]` | node | a shell inside your job on this node; the RemoteCommand of the nodes (SSH, VS Code) |
 | `job extend [id] <hours>` | frontend, job | more hours for a running job (`qextend`) |
 | `job kill <id>...` | frontend | ends jobs (`qdel`) after showing which ones and a confirmation |
@@ -72,7 +72,8 @@ scratch and the commands to connect (SSH, VS Code), which open the folder `job s
 in the project you work on. Ctrl+C stops the waiting, not the job; `job info -c <id>` prints it all again (`job list`
 shows the id). Connect as many times as you like, a dropped connection does not end the session; end it by
 `job kill <id>` (or let the walltime run out). `job info -e <id>` shows how much of the requested CPUs and memory it
-uses, to size the next one.
+uses (as PBS measures them), to size the next one; `-ee` also of the scratch and GPUs, measured on the node (`du`,
+`nvidia-smi` inside the job), which takes longer.
 
 A job is no container: its processes run on the node next to those of other users, PBS only puts them into a cgroup
 with the CPUs and memory of the job (beyond the memory the kernel kills a process of that job, not of others). An SSH

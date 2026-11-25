@@ -1,32 +1,37 @@
 #!/bin/bash
-# A PBS job (also a finished one): an overview, with -c also the commands to connect to it while it runs (as job session
-# prints them), with -e how much of its CPUs and memory it uses, -v all of these; or the given attributes one per line
-# in their order (an empty line when missing). Without an id, the job you are in (PBS_JOBID: a batch job, job shell).
+# A PBS job (also a finished one): an overview; with -c also the commands to connect to it while it runs (as job session
+# prints them), with -e how much of its CPUs and memory it uses (PBS), -ee also of its scratch and GPUs (measured on its
+# node, slower), -v all of these. Or the given attributes one per line in their order (an empty line when missing).
+# Without an id, the job you are in (PBS_JOBID: a batch job, job shell).
 #
 #   job info                                         # the job you are in
 #   job info -c 1234567                              # its state, resources, time, folders and how to connect
 #   job info -e 1234567                              # how much of the requested CPUs and memory it uses
+#   job info -ee 1234567                             # also of the scratch and GPUs
 #   job info -v 1234567                              # all of it
 #   job info 1234567 job_state exec_host2 Output_Path   # `id` is the full job id; all attributes: qstat -xwf <id>
 
 set -euo pipefail
 
 usage() {
-    echo "usage: job info [-c] [-e] [-v] [job-id] | job info <job-id> <attribute>... (without an id only in a job)" >&2
+    echo "usage: job info [-c] [-e|-ee] [-v] [job-id] | job info <job-id> <attribute>..." >&2
     exit 2
 }
 
-# the options anywhere, also after the id (getopts stops at it); attributes never start with a dash
+# the options anywhere, also after the id (getopts stops at it); attributes never start with a dash. -e counts: -ee
+# (or -e -e) is level 2.
 connect=0 efficiency=0 args=()
 for arg in "$@"; do
     if [[ ! $arg =~ ^- ]]; then
         args+=("$arg")
     elif [[ $arg =~ ^-[cev]+$ ]]; then
-        if [[ $arg == *[cv]* ]]; then
+        if [[ $arg == *c* ]]; then
             connect=1
         fi
-        if [[ $arg == *[ev]* ]]; then   # -v: every extra
-            efficiency=1
+        e_only=${arg//[^e]/}
+        efficiency=$(( efficiency + ${#e_only} ))
+        if [[ $arg == *v* ]]; then   # every extra
+            connect=1 efficiency=2
         fi
     else
         usage
@@ -68,17 +73,17 @@ fi
 
 # not $(…), it drops the empty lines of missing attributes; a failure of qstat (unknown job, its message goes to the
 # terminal) leaves no id
-mapfile -t f < <(attributes id Job_Name job_state comment Exit_status exec_host2 Resource_List.ncpus \
-    Resource_List.mem Resource_List.ngpus Resource_List.scratch_local Resource_List.scratch_ssd \
-    Resource_List.scratch_shared Resource_List.scratch_shm stime Resource_List.walltime resources_used.walltime \
-    Variable_List resources_used.cput resources_used.mem)
+mapfile -t f < <(attributes id Job_Name job_state comment Exit_status exec_host2 Resource_List.select stime \
+    Resource_List.walltime resources_used.walltime Variable_List resources_used.cput resources_used.mem \
+    Resource_List.ncpus Resource_List.mem Resource_List.ngpus)
 if [[ -z ${f[0]} ]]; then
     exit 1
 fi
-short_id=${f[0]%%.*} name=${f[1]} state=${f[2]} comment=${f[3]} exit_status=${f[4]} host=${f[5]%%[:+]*}
-stime=${f[13]} walltime=${f[14]} used=${f[15]} cput=${f[17]} mem_used=${f[18]}
+full_id=${f[0]} short_id=${f[0]%%.*} name=${f[1]} state=${f[2]} comment=${f[3]} exit_status=${f[4]}
+host=${f[5]%%[:+]*} select=${f[6]} stime=${f[7]} walltime=${f[8]} used=${f[9]} cput=${f[11]} mem_used=${f[12]}
+ncpus=${f[13]} mem=${f[14]} ngpus=${f[15]:-0}
 var() {
-    grep -o "$1=[^,]*" <<< "${f[16]}" | cut -d= -f2 || true
+    grep -o "$1=[^,]*" <<< "${f[10]}" | cut -d= -f2 || true
 }
 scratchdir=$(var SCRATCHDIR) folder=$(var PBS_O_WORKDIR)
 
@@ -91,45 +96,31 @@ case $state in
     F) state="finished${exit_status:+, exit status $exit_status}" ;;
 esac
 
-resources="${f[6]} CPUs, ${f[7]} memory"
-if [[ ${f[8]:-0} != 0 ]]; then
-    resources+=", ${f[8]} GPUs"
-fi
-scratch_size=""
-for i in 9 10 11 12; do
-    scratch_size=${scratch_size:-${f[i]}}
-done
-
-time="walltime $walltime"
-if [[ -n $stime ]]; then
-    IFS=: read -r h m s <<< "$walltime"
-    start=$(date -d "$stime" +%s)
-    end=$(( start + 10#$h * 3600 + 10#$m * 60 + 10#$s ))
-    # the end without its date on the day of the start
-    end_format='+%Y-%m-%d %H:%M'
-    if [[ $(date -d "@$start" +%F) == $(date -d "@$end" +%F) ]]; then
-        end_format=+%H:%M
-    fi
-    time="$(date -d "@$start" '+%Y-%m-%d %H:%M') – $(date -d "@$end" "$end_format")"
-    time+=", used ${used:-0:00:00} of $walltime"
-fi
-
-cat <<EOF
-job $short_id  $name
-  state      $state${comment:+ ($comment)}
-  node       ${host:--}
-  resources  $resources
-  scratch    ${scratchdir:--}${scratch_size:+ ($scratch_size)}
-  time       $time
-  folder     $folder
-EOF
-
 # hh:mm:ss -> seconds
 seconds() {
     local h m s
     IFS=: read -r h m s <<< "$1"
     echo $(( 10#$h * 3600 + 10#$m * 60 + 10#$s ))
 }
+line() {
+    printf '  %-11s %s\n' "$1" "$2"
+}
+
+echo "job $short_id  $name"
+line state "$state${comment:+ ($comment)}"
+line node "${host:--}"
+line resources "$select"
+line walltime "${used:-00:00:00} of $walltime"
+if [[ -n $stime ]]; then
+    start=$(date -d "$stime" +%s)
+    line started "$(date -d "@$start" '+%Y-%m-%d %H:%M')"
+    if [[ $state == running ]]; then
+        line ends "$(date -d "@$(( start + $(seconds "$walltime") ))" '+%Y-%m-%d %H:%M')"
+    fi
+fi
+line scratch "${scratchdir:--}"
+line folder "$folder"
+
 # a size of PBS (16gb, 3355443kb, ...) -> kB
 kilobytes() {
     local number=${1%%[a-z]*} unit=${1##*[0-9]}
@@ -144,12 +135,36 @@ kilobytes() {
 # The average use of the requested CPUs (CPU time of the job's processes over the time it runs) and the memory used,
 # as PBS measures them in the job's cgroup; nothing before the job runs.
 if (( efficiency )) && [[ -n $used && -n $cput && -n $mem_used ]] && (( $(seconds "$used") > 0 )); then
-    cpu_use=$(( 100 * $(seconds "$cput") / ($(seconds "$used") * f[6]) ))
-    mem_kb=$(kilobytes "$mem_used") mem_requested_kb=$(kilobytes "${f[7]}")
-    mem_use=$(( 100 * mem_kb / mem_requested_kb ))
+    cpu_use=$(( 100 * $(seconds "$cput") / ($(seconds "$used") * ncpus) ))
+    mem_kb=$(kilobytes "$mem_used")
+    mem_use=$(( 100 * mem_kb / $(kilobytes "$mem") ))
     mem_gb=$(awk -v kb="$mem_kb" 'BEGIN { printf "%.1f", kb / 1024 / 1024 }')
-    echo "  cpu use    $cpu_use% of ${f[6]} CPUs (CPU time $cput)"
-    echo "  mem use    $mem_use% of ${f[7]} ($mem_gb gb)"
+    echo
+    line "cpu use" "$cpu_use% of $ncpus CPUs (CPU time $cput)"
+    line "mem use" "$mem_use% of $mem ($mem_gb gb)"
+fi
+
+# The scratch and the GPUs are not in PBS: measured on the job's node inside the job (pbs_attach, so nvidia-smi sees
+# only the job's GPUs), from elsewhere over ssh; du of a large scratch takes a while.
+if (( efficiency >= 2 )) && [[ $state == running ]]; then
+    # shellcheck disable=SC2016  # a script for sh -c, its $1 and $2 expand there
+    measure='du -sh "$1" | cut -f1
+if [ "$2" -gt 0 ]; then
+    nvidia-smi --query-gpu=index,utilization.gpu,memory.used,memory.total --format=csv,noheader,nounits
+fi'
+    command=(pbs_attach -j "$full_id" sh -c "$measure" measure "$scratchdir" "$ngpus")
+    if [[ $host == "$(hostname -f)" ]]; then
+        mapfile -t measured < <("${command[@]}")
+    else
+        printf -v remote '%q ' "${command[@]}"
+        # shellcheck disable=SC2029  # quoted by printf %q here, so the node gets the command as it is
+        mapfile -t measured < <(ssh "$host" "$remote")
+    fi
+    line "scratch use" "${measured[0]:-?}"
+    for gpu in "${measured[@]:1}"; do
+        IFS=', ' read -r index utilization memory_used memory_total <<< "$gpu"
+        line "gpu $index use" "$utilization%, memory $memory_used of $memory_total MiB"
+    done
 fi
 
 if (( ! connect )) || [[ $state != running ]]; then

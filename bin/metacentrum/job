@@ -12,7 +12,7 @@ usage() {
 usage: job <command> [arguments]
   session [options]       a session on a node: a job holding resources, prints how to connect (-h: options)
   list [-x]               your jobs: state, name, node, time, folder; -x also finished ones
-  info [-c|-e|-v] [id]    a job: overview, -c how to connect, -e efficiency, -v all; no id: the job you are in
+  info [-c|-e|-v] [id]    a job: -c how to connect, -e use (-ee scratch, GPUs), -v all; no id: the job you are in
   shell [id]              a shell inside your job on this node (the RemoteCommand of the nodes)
   extend [id] <hours>     more hours for a running job; \`job extend info\`: what is left of the limit
   kill <id>...            ends jobs, after a confirmation
