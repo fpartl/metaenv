@@ -85,19 +85,22 @@ var() {
 home=$(var PBS_O_HOME) workdir=$(var PBS_O_WORKDIR)
 export HOME=${home:-$HOME} SCRATCHDIR PBS_JOBID=$id   # PBS_JOBID as in a batch job (job info without an id)
 SCRATCHDIR=$(var SCRATCHDIR)
-# ssh reads ~/.ssh of the home in passwd (the node's own one), not of HOME: git (and uv) gets the known_hosts, config
-# and default keys of HOME, as on the frontend (README: Git on the nodes)
-ssh_args=(ssh -o "UserKnownHostsFile=$HOME/.ssh/known_hosts")
-if [[ -f $HOME/.ssh/config ]]; then
-    ssh_args+=(-F "$HOME/.ssh/config")
-fi
-for key in "$HOME"/.ssh/id_{rsa,ecdsa,ecdsa_sk,ed25519,ed25519_sk}; do
-    if [[ -f $key ]]; then
-        ssh_args+=(-i "$key")
+# ssh (also of scp, rsync, git) reads ~/.ssh of the home in passwd, the node's own one, not of HOME: that one links to
+# ~/.ssh of HOME, so all of them use the keys, config and known_hosts of the frontend (README: SSH on the nodes). Made
+# here when missing; an existing ~/.ssh there stays, it may hold something.
+node_home=$(getent passwd "$USER" | cut -d: -f6)
+if [[ -n $node_home && $node_home != "$HOME" && -d $HOME/.ssh ]]; then
+    if [[ ! -e $node_home/.ssh && ! -L $node_home/.ssh ]]; then
+        if ln -s "$HOME/.ssh" "$node_home/.ssh"; then
+            echo "job shell: $node_home/.ssh links to $HOME/.ssh now (README: SSH on the nodes)" >&2
+        fi
+    elif [[ $(readlink -f "$node_home/.ssh") != "$(readlink -f "$HOME/.ssh")" ]]; then
+        {
+            echo "job shell: ssh here uses $node_home/.ssh, not $HOME/.ssh; check what it holds, then replace it:"
+            echo "mv $node_home/.ssh $node_home/.ssh.old && ln -s $HOME/.ssh $node_home/.ssh"
+        } >&2
     fi
-done
-printf -v GIT_SSH_COMMAND '%q ' "${ssh_args[@]}"
-export GIT_SSH_COMMAND
+fi
 cd "${workdir:-$HOME}"
 echo "job shell: job $id" >&2
 status=0

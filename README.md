@@ -142,29 +142,20 @@ it, through the same configuration. It skips RemoteCommand unless its setting al
 "remote.SSH.enableRemoteCommand": true
 ```
 
-### Git on the nodes
+### SSH on the nodes
 
-Git on a node works as on the frontend, with nothing to set up. `ssh` (also the one of git and of `uv sync` with git
-dependencies) reads `~/.ssh` of the home in passwd (`getent passwd $USER`), the node's own one, not of `HOME` set by
-`job shell`; `job shell` therefore gives git (`GIT_SSH_COMMAND`) the `known_hosts`, `config` and default keys
-(`id_ed25519`, …) of `HOME`. In that `config`, name files by `${HOME}`, not `~` (for ssh it is the home in passwd).
+`ssh` on a node (also of `scp`, `rsync`, git and `uv sync` with git dependencies) works as on the frontend, with
+nothing to set up. It reads `~/.ssh` of the home in passwd (`getent passwd $USER`), the node's own one, not of `HOME`
+set by `job shell`; `job shell` therefore links `~/.ssh` there to `~/.ssh` of `HOME` when it is missing, once for every
+storage a node logs you into. An existing `~/.ssh` there stays, `job shell` prints how to replace it.
 
 `uv sync` hides any question of ssh behind its progress and hangs, also on the frontend: a host new to `known_hosts`
-(connect to it once by `ssh`) or a key with a passphrase. For the latter, a key without a passphrase used only for the
-git server (added to it), on the frontend:
+(connect to it once by `ssh`) or a key with a passphrase. For the latter, the default key without a passphrase (on the
+frontend, added to the git server):
 
 ```bash
-ssh-keygen -t ed25519 -N '' -f ~/.ssh/id_ed25519_gitea
+ssh-keygen -t ed25519 -N '' -f ~/.ssh/id_ed25519
 ```
-
-```ssh-config
-# ~/.ssh/config
-Host gitea.example.cz
-    IdentityFile ${HOME}/.ssh/id_ed25519_gitea
-```
-
-On a node ssh offers the default keys before this one, so the git server must not know a default key with
-a passphrase (remove it there), else ssh asks for its passphrase.
 
 ## Images of projects
 
