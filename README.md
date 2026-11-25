@@ -9,10 +9,10 @@ shows how to use it, with examples. The tools that run anywhere are in [`bin/`](
 |---|---|---|
 | `job-session [options]` | frontend | a session on a node, prints how to connect (SSH, VS Code); options by `-h` |
 | `job-list [-x]` | frontend | your jobs: state, name, node, time of the walltime, folder; `-x` also finished ones |
-| `job-extend <id> <hours>` | frontend | more hours for a running job (`qextend`), prints its new end; `info`: limit |
+| `job-extend [id] <hours>` | frontend, job | more hours for a running job (`qextend`); no id: the job you are in |
 | `job-kill <id>...` | frontend | ends jobs (`qdel`) after showing which ones and a confirmation |
 | `wjo <id>`, `wje <id>` | frontend | output / errors of a job: `tail -f` while it runs, `less` once finished |
-| `job-info <id> <attribute>...` | frontend | attributes of a job (also a finished one), one per line |
+| `job-info [id [attribute...]]` | frontend, job | a job (also finished), or its attributes; no id: the job you are in |
 | `job-shell [job-id]` | node | a shell inside your job on this node; the RemoteCommand of the nodes (SSH, VS Code) |
 | `sinshell <image.sif> [command...]` | node | a shell or a command in an image, with the GPUs and the job's scratch |
 | `docker-to-sif <archive.tar> [out.sif]` | node | `.sif` from a `docker save` archive, built in the job's scratch |

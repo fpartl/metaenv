@@ -40,7 +40,7 @@ _metaenv_complete_file() {
     mapfile -t COMPREPLY < <(compgen -f -X "!$1" -- "$cur"; compgen -d -- "$cur")
 }
 
-# job id, also of a finished job: wjo <id>, wje <id>, job-info <id> <attribute>..., job-log <out|err> <id>
+# job id, also of a finished job: wjo <id>, wje <id>, job-info [id [attribute...]], job-log <out|err> <id>
 _metaenv_wjo() {
     if (( COMP_CWORD == 1 )); then
         _metaenv_complete_job -x

@@ -67,7 +67,7 @@ var() {
     grep -o "$1=[^,]*" <<< "${f[0]}" | cut -d= -f2 || true
 }
 home=$(var PBS_O_HOME) workdir=$(var PBS_O_WORKDIR)
-export HOME=${home:-$HOME} SCRATCHDIR
+export HOME=${home:-$HOME} SCRATCHDIR PBS_JOBID=$id   # PBS_JOBID as in a batch job (job-info without an id)
 SCRATCHDIR=$(var SCRATCHDIR)
 # ssh reads ~/.ssh of the home in passwd (the node's own one), not of HOME: git (and uv) gets the known_hosts, config
 # and default keys of HOME, as on the frontend (README: Git on the nodes)

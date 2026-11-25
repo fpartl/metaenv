@@ -1,19 +1,24 @@
 #!/bin/bash
-# Attributes of a PBS job (also a finished one), one per line in the given order, an empty line when missing:
+# A PBS job (also a finished one): an overview, or the given attributes one per line in their order (an empty line when
+# missing). Without an id, the job you are in (PBS_JOBID: a batch job, the shell of job-shell).
 #
-#   job-info 1234567 job_state exec_host2 Output_Path     # `id` is the full job id; all attributes: qstat -xwf <id>
+#   job-info                                         # the job you are in
+#   job-info 1234567                                 # its state, node, resources, time and folders
+#   job-info 1234567 job_state exec_host2 Output_Path   # `id` is the full job id; all attributes: qstat -xwf <id>
 
 set -euo pipefail
 
-if (( $# < 2 )); then
-    echo "usage: job-info <job-id> <attribute>..." >&2
+if (( $# == 0 )) && [[ -z ${PBS_JOBID:-} ]]; then
+    echo "usage: job-info [job-id [attribute...]] (without an id only in a job)" >&2
     exit 2
 fi
-id=$1
-shift
+id=${1:-$PBS_JOBID}
+shift || true
 
-# plain `qstat -f` instead of `-F json`, whose escaping of the job's environment is not always valid JSON
-qstat -x -w -f "$id" | python3 -c '
+# The attributes of the job, one per line. Plain `qstat -f` instead of `-F json`, whose escaping of the job's
+# environment is not always valid JSON.
+attributes() {
+    qstat -x -w -f "$id" | python3 -c '
 import sys
 
 attrs, key = {}, None
@@ -30,3 +35,37 @@ for line in sys.stdin:
 for name in sys.argv[1:]:
     print(attrs.get(name, ""))
 ' "$@"
+}
+
+if (( $# > 0 )); then
+    attributes "$@"
+    exit
+fi
+
+# not $(…), it drops the empty lines of missing attributes; a failure of qstat (unknown job, its message goes to the
+# terminal) leaves no id
+mapfile -t f < <(attributes id Job_Name job_state exec_host2 Resource_List.select Resource_List.walltime \
+    resources_used.walltime Variable_List comment)
+if [[ -z ${f[0]} ]]; then
+    exit 1
+fi
+var() {
+    grep -o "$1=[^,]*" <<< "${f[7]}" | cut -d= -f2 || true
+}
+host=${f[3]%%[:+]*}
+time="${f[6]:-0:00:00} of ${f[5]}"
+if [[ ${f[2]} == R ]]; then
+    IFS=: read -r wh wm ws <<< "${f[5]}"
+    IFS=: read -r uh um us <<< "${f[6]:-0:0:0}"
+    left=$(( (10#$wh - 10#$uh) * 3600 + (10#$wm - 10#$um) * 60 + 10#$ws - 10#$us ))
+    time+=", ends $(date -d "+$left seconds" '+%Y-%m-%d %H:%M')"
+fi
+cat <<EOF
+job ${f[0]%%.*}  ${f[1]}
+  state      ${f[2]}${f[8]:+ (${f[8]})}
+  node       ${host:--}
+  resources  ${f[4]}
+  time       $time
+  scratch    $(var SCRATCHDIR)
+  folder     $(var PBS_O_WORKDIR)
+EOF
