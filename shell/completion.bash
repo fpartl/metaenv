@@ -8,11 +8,11 @@ _metaenv_complete_words() {
     mapfile -t COMPREPLY < <(compgen -W "$1" -- "${COMP_WORDS[COMP_CWORD]}")
 }
 
-# Drops from COMPREPLY what is already on the command line after `<command> <subcommand>` (a job id also by its short
-# form, as job list shows it).
+# Drops from COMPREPLY what is already on the command line from the word with the given index (2 after
+# `<command> <subcommand>`) on; a job id also by its short form, as job list shows it.
 _metaenv_drop_given() {
     local word given=" " kept=()
-    for word in "${COMP_WORDS[@]:2:COMP_CWORD-2}"; do
+    for word in "${COMP_WORDS[@]:$1:COMP_CWORD-$1}"; do
         given+="${word%%.*} "
     done
     for word in "${COMPREPLY[@]}"; do
@@ -30,21 +30,51 @@ _metaenv_complete_file() {
     mapfile -t COMPREPLY < <(compgen -f -X "!$1" -- "$cur"; compgen -d -- "$cur")
 }
 
-# sif <command>: anywhere (bin/)
+# Completes the current word with folders.
+_metaenv_complete_dir() {
+    compopt -o filenames
+    mapfile -t COMPREPLY < <(compgen -d -- "${COMP_WORDS[COMP_CWORD]}")
+}
+
+# sif <command>: anywhere (bin/). Each command gets only the words it takes, nothing after them.
 _metaenv_sif() {
     if (( COMP_CWORD == 1 )); then
         _metaenv_complete_words "tag build shell from-docker"
         return
     fi
     case ${COMP_WORDS[1]} in
-        tag | build)
-            compopt -o filenames
-            mapfile -t COMPREPLY < <(compgen -d -- "${COMP_WORDS[COMP_CWORD]}")
+        tag)
+            if (( COMP_CWORD == 2 )); then
+                _metaenv_complete_dir
+            fi
+            ;;
+        build)
+            # [-n NAME] <images>: no completion of the name; the folder once
+            local word previous=${COMP_WORDS[COMP_CWORD-1]} folder_given=0 after_n=0
+            for word in "${COMP_WORDS[@]:2:COMP_CWORD-2}"; do
+                if (( after_n )); then
+                    after_n=0
+                elif [[ $word == -n ]]; then
+                    after_n=1
+                else
+                    folder_given=1
+                fi
+            done
+            if [[ $previous == -n ]]; then
+                return
+            elif [[ ${COMP_WORDS[COMP_CWORD]} == -* ]]; then
+                _metaenv_complete_words "-n"
+                _metaenv_drop_given 2
+            elif (( ! folder_given )); then
+                _metaenv_complete_dir
+            fi
             ;;
         shell)
-            # the image, then a command in it (default completion)
+            # the image, then a command in it and its arguments (bash's default completion)
             if (( COMP_CWORD == 2 )); then
                 _metaenv_complete_file '*.sif'
+            else
+                compopt -o default
             fi
             ;;
         from-docker)
@@ -56,7 +86,7 @@ _metaenv_sif() {
             ;;
     esac
 }
-complete -F _metaenv_sif -o default sif
+complete -F _metaenv_sif sif
 
 [[ $HOME == /storage/* ]] || return 0
 
@@ -88,15 +118,20 @@ _metaenv_fzf_job_post() {
     cut -d' ' -f1
 }
 
-# job <command>: ids of the jobs that have not finished, as `job list`; also of finished ones for log, whose output is
-# mostly read then, and in fzf for info, where the state shows and finished ones can be filtered out
+# job <command>: each command gets only the words it takes, nothing after them. Ids of the jobs that have not
+# finished, as `job list`; also of finished ones for log, whose output is mostly read then, and in fzf for info, where
+# the state shows and finished ones can be filtered out.
 _metaenv_job() {
     if (( COMP_CWORD == 1 )); then
         _metaenv_complete_words "session list info shell extend kill log"
         return
     fi
     case ${COMP_WORDS[1]} in
-        list) _metaenv_complete_words "-x" ;;
+        list)
+            if (( COMP_CWORD == 2 )); then
+                _metaenv_complete_words "-x"
+            fi
+            ;;
         info)
             # one id: once it is there, only the options not given yet
             local word id_given=0
@@ -107,7 +142,7 @@ _metaenv_job() {
             done
             if [[ ${COMP_WORDS[COMP_CWORD]} == -* ]] || (( id_given )); then
                 _metaenv_complete_words "-c -e -v"
-                _metaenv_drop_given
+                _metaenv_drop_given 2
             elif _metaenv_fzf_asked; then
                 _metaenv_complete_job -x
             else
@@ -130,7 +165,7 @@ _metaenv_job() {
         kill)
             # more ids, each once
             _metaenv_complete_job
-            _metaenv_drop_given
+            _metaenv_drop_given 2
             ;;
         log)
             if (( COMP_CWORD == 2 )); then
@@ -154,6 +189,7 @@ complete -F _metaenv_wjo wjo wje
 # PBS's own commands: qdel <id>..., qextend <id> <hh:mm:ss> | info
 _metaenv_qdel() {
     _metaenv_complete_job
+    _metaenv_drop_given 1
 }
 complete -F _metaenv_qdel qdel
 
