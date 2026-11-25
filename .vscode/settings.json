@@ -1,4 +1,12 @@
 {
+    "files.exclude": {
+        ".venv" : true,
+        ".githooks": true,
+        "uv.lock": true,
+
+        // ! UNHIDE THESE WHEN NEEDED
+        ".pre-commit-config.yaml": true,
+    },
     "cSpell.words": [
         "Apptainer",
         "CACHEDIR",

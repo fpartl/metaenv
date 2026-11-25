@@ -38,15 +38,15 @@ The old `~/.metaenv_user_conf` is not used any more and can be deleted.
 Only this one home is set up. Every storage has its own home and a node logs you into the one nearest to it, so
 the shell on a node gets this home from `job-shell` (see Sessions), with its `.bashrc`, metaenv and configuration.
 
-**Your machine.** Clone anywhere and run `install.sh` the same way. `metaenv.sh` puts `bin/metacentrum/` on `PATH` only
-when `HOME` is on `/storage` (MetaCentrum), so your machine gets just `bin/`: `sif-tag` and `sif-build`. `sif-build`
-needs Docker and [Apptainer](https://apptainer.org/) (`sudo dnf install apptainer`).
+**Your machine.** Clone anywhere and run `install.sh` the same way. `shell/metaenv.sh` puts `bin/metacentrum/` on
+`PATH` only when `HOME` is on `/storage` (MetaCentrum), so your machine gets just `bin/`: `sif-tag` and `sif-build`.
+`sif-build` needs Docker and [Apptainer](https://apptainer.org/) (`sudo dnf install apptainer`).
 
 ### Tab completion
 
-In a terminal, `metaenv.sh` also loads [`completion.bash`](completion.bash): Tab completes your job ids (newest first)
-in `wjo`, `wje`, `job-log`, `job-info` (also finished jobs) and `qdel`, `qextend`, `job-shell` (only unfinished ones),
-`.sif` images in `sinshell` and `docker-to-sif`, `.tar` archives in `docker-to-sif`. With
+In a terminal, `metaenv.sh` also loads [`shell/completion.bash`](shell/completion.bash): Tab completes your job ids
+(newest first) in `wjo`, `wje`, `job-log`, `job-info` (also finished jobs) and `qdel`, `qextend`, `job-shell` (only
+unfinished ones), `.sif` images in `sinshell` and `docker-to-sif`, `.tar` archives in `docker-to-sif`. With
 [fzf](https://github.com/junegunn/fzf) loaded in the shell (`eval "$(fzf --bash)"`), `wjo **<Tab>` opens a list of the
 jobs with their state, name and queue, and puts the id of the chosen one on the command line.
 
@@ -80,7 +80,7 @@ job's scratch by itself; `tmp-to-scratch` does the same by hand, e.g. after `SCR
 `TMPDIR` on its own.
 
 A PBS job starts in the node's own home, without metaenv (unlike the shell of `job-shell`). Your own job script gets it
-by `source /storage/plzen1/home/$USER/tools/metaenv/metaenv.sh`.
+by `source /storage/plzen1/home/$USER/tools/metaenv/shell/metaenv.sh`.
 
 ### SSH to the nodes from your machine
 
@@ -104,8 +104,17 @@ Host nympha *.metacentrum.cz *.cesnet.cz *.cerit-sc.cz *.fav.zcu.cz *.meta.zcu.c
 ```
 
 `GSSAPIKeyExchange` verifies the host by Kerberos, so a new node does not ask to accept its host key. The patterns
-match the name you type, so aliases (`nympha`) are not affected; a machine that is not a node but matches by its full
-name (e.g. your server `*.fav.zcu.cz`) needs an alias or `!<its name>` in the patterns.
+match also the `HostName` of an alias, so a machine that is not a node but is in these domains (e.g. your server
+`*.fav.zcu.cz`, a frontend other than nympha) needs a block before them; the first value of an option wins:
+
+```ssh-config
+Host myserver.fav.zcu.cz skirit.ics.muni.cz
+    ProxyJump none
+    RemoteCommand none
+    RequestTTY auto
+```
+
+`ssh -G <host> | grep -Ei 'proxyjump|remotecommand'` shows what a host gets.
 
 `ssh <node>` then gives a shell inside your session (`job-session`) on that node, batch jobs are not considered; with
 more of your sessions there it asks which one, and VS Code (no terminal to ask in) refuses with their list. Without a

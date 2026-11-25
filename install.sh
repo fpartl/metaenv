@@ -4,7 +4,8 @@
 #   ./install.sh                    # ~/.bashrc
 #   ./install.sh <path>/.bashrc
 #
-# The same on MetaCentrum and on your machine: metaenv.sh itself puts bin/metacentrum/ on PATH only on MetaCentrum.
+# The same on MetaCentrum and on your machine: shell/metaenv.sh itself puts bin/metacentrum/ on PATH only on
+# MetaCentrum.
 # Only this one home: `job-session` connects to a node with this HOME, whichever storage the node's own home is on.
 # The block goes to the top of the file, before any "interactive shells only" part, so the tools are on PATH also
 # for `ssh <frontend> job-session …`. Running it again replaces the block, the previous file is kept as `*.metaenv.bak`.
@@ -21,7 +22,7 @@ dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 tmp=$(mktemp "$file.XXXXXX")
 {
     echo "# >>> metaenv >>>"
-    printf 'source %q\n' "$dir/metaenv.sh"
+    printf 'source %q\n' "$dir/shell/metaenv.sh"
     echo "# <<< metaenv <<<"
     if [[ -f $file ]]; then
         # drop this block and the block of the old metaenv (`# metaenv stuff`)

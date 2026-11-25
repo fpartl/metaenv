@@ -3,7 +3,8 @@
 # read it too, so it must never print anything. A PBS job starts in the node's own home, without it: a job script that
 # wants it sources this file by its full path.
 
-METAENV_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# the root of the repository, this file is in its shell/
+METAENV_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 
 # bin/ runs anywhere; bin/metacentrum/ (PBS, Singularity) only on MetaCentrum, recognized by a home on /storage
 metaenv_path_add() {
@@ -20,7 +21,7 @@ unset -f metaenv_path_add
 
 # Tab completion of job ids and images, only for a terminal
 if [[ $- == *i* ]]; then
-    source "$METAENV_DIR/completion.bash"
+    source "$METAENV_DIR/shell/completion.bash"
 fi
 
 # Temporary files into the job's scratch: /tmp of a node has a small limit, and some libraries (and Singularity, when it
