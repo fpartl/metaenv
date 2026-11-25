@@ -16,16 +16,23 @@ usage() {
     exit 2
 }
 
-connect=0 efficiency=0
-while getopts "cev" opt; do
-    case $opt in
-        c) connect=1 ;;
-        e) efficiency=1 ;;
-        v) connect=1 efficiency=1 ;;   # every extra
-        *) usage ;;
-    esac
+# the options anywhere, also after the id (getopts stops at it); attributes never start with a dash
+connect=0 efficiency=0 args=()
+for arg in "$@"; do
+    if [[ ! $arg =~ ^- ]]; then
+        args+=("$arg")
+    elif [[ $arg =~ ^-[cev]+$ ]]; then
+        if [[ $arg == *[cv]* ]]; then
+            connect=1
+        fi
+        if [[ $arg == *[ev]* ]]; then   # -v: every extra
+            efficiency=1
+        fi
+    else
+        usage
+    fi
 done
-shift $(( OPTIND - 1 ))
+set -- "${args[@]}"
 if (( $# == 0 )) && [[ -z ${PBS_JOBID:-} ]] || (( (connect || efficiency) && $# > 1 )); then
     usage
 fi

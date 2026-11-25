@@ -87,4 +87,11 @@ printf -v GIT_SSH_COMMAND '%q ' "${ssh_args[@]}"
 export GIT_SSH_COMMAND
 cd "${workdir:-$HOME}"
 echo "job shell: job $id" >&2
-exec pbs_attach -j "$id" bash -l
+status=0
+pbs_attach -j "$id" bash -l || status=$?
+# leaving the shell does not end the job: a reminder, while it still runs (its walltime may have ended it)
+mapfile -t f < <("$here/info" "$id" job_state Job_Name)
+if [[ ${f[0]:-} == R ]]; then
+    echo "job shell: job $id (${f[1]}) still runs and holds its resources; end it on a frontend: job kill $id" >&2
+fi
+exit "$status"
