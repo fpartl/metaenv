@@ -96,6 +96,7 @@ Host *.metacentrum.cz *.cesnet.cz *.cerit-sc.cz *.fav.zcu.cz *.meta.zcu.cz *.mun
     ProxyJump nympha
     RequestTTY yes
     RemoteCommand /storage/plzen1/home/<you>/tools/metaenv/bin/metacentrum/job-shell
+    ForwardAgent yes
 
 Host nympha *.metacentrum.cz *.cesnet.cz *.cerit-sc.cz *.fav.zcu.cz *.meta.zcu.cz *.muni.cz *.cuni.cz *.elixir-czech.cz
     GSSAPIAuthentication yes
@@ -103,7 +104,10 @@ Host nympha *.metacentrum.cz *.cesnet.cz *.cerit-sc.cz *.fav.zcu.cz *.meta.zcu.c
     GSSAPIKeyExchange yes
 ```
 
-`GSSAPIKeyExchange` verifies the host by Kerberos, so a new node does not ask to accept its host key. The patterns
+`GSSAPIKeyExchange` verifies the host by Kerberos, so a new node does not ask to accept its host key. `ForwardAgent`
+gives `ssh` on the node (git, `uv sync` of git dependencies) the keys of your machine's agent: it reads `~/.ssh` of
+the node's own home (`getent passwd $USER`), not of `HOME` set by `job-shell`, so the keys there are not found. While
+you are connected, root of the node can use your agent too. The patterns
 match also the `HostName` of an alias, so a machine that is not a node but is in these domains (e.g. your server
 `*.fav.zcu.cz`, a frontend other than nympha) needs a block before them; the first value of an option wins:
 
