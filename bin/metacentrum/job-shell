@@ -69,6 +69,19 @@ var() {
 home=$(var PBS_O_HOME) workdir=$(var PBS_O_WORKDIR)
 export HOME=${home:-$HOME} SCRATCHDIR
 SCRATCHDIR=$(var SCRATCHDIR)
+# ssh reads ~/.ssh of the home in passwd (the node's own one), not of HOME: git (and uv) gets the known_hosts, config
+# and default keys of HOME, as on the frontend (README: Git on the nodes)
+ssh_args=(ssh -o "UserKnownHostsFile=$HOME/.ssh/known_hosts")
+if [[ -f $HOME/.ssh/config ]]; then
+    ssh_args+=(-F "$HOME/.ssh/config")
+fi
+for key in "$HOME"/.ssh/id_{rsa,ecdsa,ecdsa_sk,ed25519,ed25519_sk}; do
+    if [[ -f $key ]]; then
+        ssh_args+=(-i "$key")
+    fi
+done
+printf -v GIT_SSH_COMMAND '%q ' "${ssh_args[@]}"
+export GIT_SSH_COMMAND
 cd "${workdir:-$HOME}"
 echo "job-shell: job $id" >&2
 exec pbs_attach -j "$id" bash -l

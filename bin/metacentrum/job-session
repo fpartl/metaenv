@@ -51,7 +51,6 @@ submit=(qsub -N "$name" -m n -j oe -o /dev/null "${queue[@]}" -l "$select" -l "w
 # the exact command, to check the resources before they are requested
 printf -v shown "%q " "${submit[@]}"
 echo "${shown% }"
-echo
 read -r -p "submit? [y/N] " answer
 [[ $answer =~ ^[YyAa]$ ]] || exit 1
 id=$("${submit[@]}")

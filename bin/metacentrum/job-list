@@ -1,6 +1,7 @@
 #!/bin/bash
-# Your PBS jobs, one per line: id, state, name (sessions of job-session: session-<project>), node, time used of the
-# walltime and the folder it was submitted from. The id is without the server, as qdel, wjo or job-shell take it.
+# Your PBS jobs, one per line: id, state, name (sessions of job-session: session-<project>), node, hours used of the
+# walltime and the folder it was submitted from (in a terminal shortened at its beginning to fit the line). The id is
+# without the server, as qdel, wjo or job-shell take it.
 #
 #   job-list        # jobs that have not finished
 #   job-list -x     # also the finished ones (PBS keeps them for a while)
@@ -24,6 +25,8 @@ fi
 
 # plain `qstat -f` as in job-info (`-F json` is not always valid JSON); all jobs in one call
 qstat "${finished[@]}" -w -f "${ids[@]}" | python3 -c '
+import os
+import shutil
 import sys
 
 jobs, attrs, key = [], {}, None
@@ -38,20 +41,33 @@ for line in sys.stdin:
         key, value = line.strip().split(" = ", 1)
         attrs[key] = value
 
-rows = [("id", "state", "name", "node", "time", "folder")]
+def hours(walltime):  # 01:02:03 -> 1:02
+    h, m, _ = walltime.split(":")
+    return f"{int(h)}:{m}"
+
+home = os.environ["HOME"]
+rows = [("id", "S", "name", "node", "time", "folder")]
 for job in sorted(jobs, key=lambda job: int(job["id"].split("[")[0])):
     variables = dict(v.split("=", 1) for v in job.get("Variable_List", "").split(",") if "=" in v)
-    used = job.get("resources_used.walltime", "-")
+    used = job.get("resources_used.walltime")
+    folder = variables.get("PBS_O_WORKDIR", "")
+    if folder == home or folder.startswith(home + "/"):
+        folder = "~" + folder.removeprefix(home)
     rows.append((
         job["id"],
         job.get("job_state", ""),
         job.get("Job_Name", ""),
         job.get("exec_host2", "-").split(":")[0].split("+")[0],
-        used + " / " + job.get("Resource_List.walltime", "?"),
-        variables.get("PBS_O_WORKDIR", ""),
+        (hours(used) if used else "-") + "/" + hours(job.get("Resource_List.walltime", "0:00:00")),
+        folder,
     ))
 
+# one line per job in a terminal: the folder (the last column) loses its beginning when it does not fit
 widths = [max(len(row[i]) for row in rows) for i in range(len(rows[0]) - 1)]
+room = shutil.get_terminal_size().columns - sum(widths) - 2 * len(widths)
 for row in rows:
-    print("  ".join(cell.ljust(width) for cell, width in zip(row, widths)) + "  " + row[-1])
+    folder = row[-1]
+    if sys.stdout.isatty() and len(folder) > room > 10:
+        folder = "…" + folder[len(folder) - room + 1:]
+    print("  ".join(cell.ljust(width) for cell, width in zip(row, widths)) + "  " + folder)
 '

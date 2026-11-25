@@ -97,7 +97,6 @@ Host *.metacentrum.cz *.cesnet.cz *.cerit-sc.cz *.fav.zcu.cz *.meta.zcu.cz *.mun
     ProxyJump nympha
     RequestTTY yes
     RemoteCommand /storage/plzen1/home/<you>/tools/metaenv/bin/metacentrum/job-shell
-    ForwardAgent yes
 
 Host nympha *.metacentrum.cz *.cesnet.cz *.cerit-sc.cz *.fav.zcu.cz *.meta.zcu.cz *.muni.cz *.cuni.cz *.elixir-czech.cz
     GSSAPIAuthentication yes
@@ -105,10 +104,7 @@ Host nympha *.metacentrum.cz *.cesnet.cz *.cerit-sc.cz *.fav.zcu.cz *.meta.zcu.c
     GSSAPIKeyExchange yes
 ```
 
-`GSSAPIKeyExchange` verifies the host by Kerberos, so a new node does not ask to accept its host key. `ForwardAgent`
-gives `ssh` on the node (git, `uv sync` of git dependencies) the keys of your machine's agent: it reads `~/.ssh` of
-the node's own home (`getent passwd $USER`), not of `HOME` set by `job-shell`, so the keys there are not found. While
-you are connected, root of the node can use your agent too. The patterns
+`GSSAPIKeyExchange` verifies the host by Kerberos, so a new node does not ask to accept its host key. The patterns
 match also the `HostName` of an alias, so a machine that is not a node but is in these domains (e.g. your server
 `*.fav.zcu.cz`, a frontend other than nympha) needs a block before them; the first value of an option wins:
 
@@ -136,6 +132,30 @@ it, through the same configuration. It skips RemoteCommand unless its setting al
 ```json
 "remote.SSH.enableRemoteCommand": true
 ```
+
+### Git on the nodes
+
+Git on a node works as on the frontend, with nothing to set up. `ssh` (also the one of git and of `uv sync` with git
+dependencies) reads `~/.ssh` of the home in passwd (`getent passwd $USER`), the node's own one, not of `HOME` set by
+`job-shell`; `job-shell` therefore gives git (`GIT_SSH_COMMAND`) the `known_hosts`, `config` and default keys
+(`id_ed25519`, …) of `HOME`. In that `config`, name files by `${HOME}`, not `~` (for ssh it is the home in passwd).
+
+`uv sync` hides any question of ssh behind its progress and hangs, also on the frontend: a host new to `known_hosts`
+(connect to it once by `ssh`) or a key with a passphrase. For the latter, a key without a passphrase used only for the
+git server (added to it), on the frontend:
+
+```bash
+ssh-keygen -t ed25519 -N '' -f ~/.ssh/id_ed25519_gitea
+```
+
+```ssh-config
+# ~/.ssh/config
+Host gitea.example.cz
+    IdentityFile ${HOME}/.ssh/id_ed25519_gitea
+```
+
+On a node ssh offers the default keys before this one, so the git server must not know a default key with
+a passphrase (remove it there), else ssh asks for its passphrase.
 
 ## Images of projects
 
