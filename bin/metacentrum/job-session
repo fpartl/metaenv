@@ -1,7 +1,7 @@
 #!/bin/bash
 # A session on a MetaCentrum node: a batch job that only holds the resources, so you connect to it by SSH or VS Code
-# as many times as you like, and a dropped connection (VPN, sleep) does not end it. Ends with its walltime or `qdel`.
-# Prints the final qsub command and submits it only after a confirmation.
+# as many times as you like, and a dropped connection (VPN, sleep) does not end it. Ends with its walltime or
+# `job-kill`. Prints the final qsub command and submits it only after a confirmation.
 #
 #   job-session                  # 2 CPUs, 16 GB RAM, 32 GB scratch, no GPU, 8 hours
 #   job-session -g 1 -m 32       # with a GPU (the default queue routes it to the GPU queues)
@@ -59,7 +59,7 @@ echo "job $id submitted, waiting until it runs (Ctrl+C stops waiting, not the jo
 waiting=1
 on_exit() {
     if (( waiting )); then
-        echo "the job stays queued, end it with: qdel $id" >&2
+        echo "the job stays queued, end it with: job-kill $id" >&2
     fi
 }
 trap on_exit EXIT
@@ -121,5 +121,5 @@ VS Code (README: SSH to the nodes):
 code --remote ssh-remote+$host $folder
 
 end it:
-qdel $id
+job-kill $id
 EOF

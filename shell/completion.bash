@@ -57,11 +57,11 @@ _metaenv_job_log() {
 }
 complete -F _metaenv_job_log job-log
 
-# a job that has not finished: qdel <id>..., job-shell [id], qextend <id> <hh:mm:ss> | info
+# a job that has not finished: qdel <id>..., job-kill <id>..., job-shell [id], qextend <id> <hh:mm:ss> | info
 _metaenv_qdel() {
     _metaenv_complete_job
 }
-complete -F _metaenv_qdel qdel job-shell
+complete -F _metaenv_qdel qdel job-kill job-shell
 
 _metaenv_qextend() {
     # job ids start with a digit, so a word starting with a letter can only be `info`

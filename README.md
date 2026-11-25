@@ -9,6 +9,7 @@ shows how to use it, with examples. The tools that run anywhere are in [`bin/`](
 |---|---|---|
 | `job-session [options]` | frontend | a session on a node, prints how to connect (SSH, VS Code); options by `-h` |
 | `job-list [-x]` | frontend | your jobs: state, name, node, time of the walltime, folder; `-x` also finished ones |
+| `job-kill <id>...` | frontend | ends jobs (`qdel`) after showing which ones and a confirmation |
 | `wjo <id>`, `wje <id>` | frontend | output / errors of a job: `tail -f` while it runs, `less` once finished |
 | `job-info <id> <attribute>...` | frontend | attributes of a job (also a finished one), one per line |
 | `job-shell [job-id]` | node | a shell inside your job on this node; the RemoteCommand of the nodes (SSH, VS Code) |
@@ -46,8 +47,9 @@ the shell on a node gets this home from `job-shell` (see Sessions), with its `.b
 ### Tab completion
 
 In a terminal, `metaenv.sh` also loads [`shell/completion.bash`](shell/completion.bash): Tab completes your job ids
-(newest first) in `wjo`, `wje`, `job-log`, `job-info` (also finished jobs) and `qdel`, `qextend`, `job-shell` (only
-unfinished ones), `.sif` images in `sinshell` and `docker-to-sif`, `.tar` archives in `docker-to-sif`. With
+(newest first) in `wjo`, `wje`, `job-log`, `job-info` (also finished jobs) and `job-kill`, `qdel`, `qextend`,
+`job-shell` (only unfinished ones), `.sif` images in `sinshell` and `docker-to-sif`, `.tar` archives in
+`docker-to-sif`. With
 [fzf](https://github.com/junegunn/fzf) loaded in the shell (`eval "$(fzf --bash)"`), `wjo **<Tab>` opens a list of the
 jobs with their state, name and queue, and puts the id of the chosen one on the command line.
 
@@ -63,7 +65,7 @@ The session is a batch job that only sleeps and holds the resources. `job-sessio
 command and submits it only after you confirm it (`y`). Then it waits until the job runs and prints the node, its
 scratch and the commands to connect (SSH, VS Code), which open the folder `job-session` was started from, so start it
 in the project you work on. Ctrl+C stops the waiting, not the job. Connect as many times as you like, a dropped
-connection does not end the session; end it by `qdel <id>` (or let the walltime run out).
+connection does not end the session; end it by `job-kill <id>` (or let the walltime run out).
 
 A job is no container: its processes run on the node next to those of other users, PBS only puts them into a cgroup
 with the CPUs and memory of the job (beyond the memory the kernel kills a process of that job, not of others). An SSH

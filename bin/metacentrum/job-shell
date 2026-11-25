@@ -56,7 +56,7 @@ if [[ -z $id ]]; then
         {
             echo "job-shell: more of your sessions run on $host and there is no terminal to ask which one:"
             printf '  %s\n' "${labels[@]}"
-            echo "end the ones you do not need (qdel), or choose one: ssh -o RemoteCommand='$0 <job-id>' $host"
+            echo "end the ones you do not need (job-kill), or choose one: ssh -o RemoteCommand='$0 <job-id>' $host"
         } >&2
         exit 1
     fi
