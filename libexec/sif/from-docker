@@ -30,11 +30,16 @@ else
 fi
 
 mv "$partial" "$output"
+# the heading in color only in a terminal, and not with NO_COLOR set (no-color.org)
+blue="" reset=""
+if [[ -t 1 && -z ${NO_COLOR:-} ]]; then
+    blue=$'\e[94m' reset=$'\e[0m'
+fi
 printf -v image %q "$(realpath "$output")"
 cat <<EOF
 
 image $image
 
-open it:
+${blue}open it:$reset
 sif shell $image
 EOF

@@ -47,13 +47,18 @@ fi
 docker build "${ssh[@]}" -t "$name:$tag" .
 
 if ! command -v apptainer &> /dev/null; then
+    # the headings in color only in a terminal, and not with NO_COLOR set (no-color.org)
+    blue="" reset=""
+    if [[ -t 2 && -z ${NO_COLOR:-} ]]; then
+        blue=$'\e[94m' reset=$'\e[0m'
+    fi
     cat >&2 <<EOF
 apptainer is missing on this machine (install it, e.g. fedora_setup); without it, convert the image on MetaCentrum
 
-here:
+${blue}here:$reset
 docker save -o $images/$name-$tag.tar $name:$tag
 
-in a job on MetaCentrum (job session), then delete the .tar:
+${blue}in a job on MetaCentrum (job session), then delete the .tar:$reset
 sif from-docker $images/$name-$tag.tar $image
 EOF
     exit 1

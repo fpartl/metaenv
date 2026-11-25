@@ -87,13 +87,25 @@ var() {
 }
 scratchdir=$(var SCRATCHDIR) folder=$(var PBS_O_WORKDIR)
 
+# colors only in a terminal, and not with NO_COLOR set (no-color.org)
+blue="" green="" yellow="" red="" reset=""
+if [[ -t 1 && -z ${NO_COLOR:-} ]]; then
+    blue=$'\e[94m' green=$'\e[32m' yellow=$'\e[33m' red=$'\e[31m' reset=$'\e[0m'
+fi
+
 # PBS's comment repeats the node, resources and start of a running job; it tells why one waits or how it ended
+state_color=""
 case $state in
-    R) state=running comment="" ;;
-    Q) state=queued ;;
-    H) state=held ;;
-    W) state=waiting ;;
-    F) state="finished${exit_status:+, exit status $exit_status}" ;;
+    R) state=running comment="" state_color=$green ;;
+    Q) state=queued state_color=$yellow ;;
+    H) state=held state_color=$yellow ;;
+    W) state=waiting state_color=$yellow ;;
+    F)
+        state="finished${exit_status:+, exit status $exit_status}"
+        if [[ ${exit_status:-0} != 0 ]]; then
+            state_color=$red
+        fi
+        ;;
 esac
 
 # hh:mm:ss -> seconds
@@ -107,7 +119,7 @@ line() {
 }
 
 echo "job $short_id  $name"
-line state "$state${comment:+ ($comment)}"
+line state "$state_color$state$reset${comment:+ ($comment)}"
 line node "${host:--}"
 line resources "$select"
 line walltime "${used:-00:00:00} of $walltime"
@@ -177,25 +189,26 @@ fi
 # without an id only for a session (job session); a batch job needs its id.
 job=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../bin/metacentrum" && pwd)/job
 from_frontend="job shell $short_id"
-# the commands without indentation and on lines of their own, so that a triple click selects exactly one of them
+# the commands without indentation and on lines of their own, without colors, so that a triple click selects exactly
+# one of them; the headings in color
 echo
-echo "from a frontend:"
+echo "${blue}from a frontend:$reset"
 echo "$from_frontend"
 echo
-echo "from your machine (README: SSH to the nodes):"
+echo "${blue}from your machine (README: SSH to the nodes):$reset"
 if [[ $name == session-* ]]; then
     echo "ssh $host"
     echo
-    echo "VS Code (README: SSH to the nodes):"
+    echo "${blue}VS Code (README: SSH to the nodes):$reset"
     printf 'code --remote ssh-remote+%s %q\n' "$host" "$folder"
 else
     echo "ssh -o RemoteCommand='$job shell $short_id' $host"
 fi
 cat <<EOF
 
-extend it:
+${blue}extend it:$reset
 job extend $short_id <hours>
 
-end it:
+${blue}end it:$reset
 job kill $short_id
 EOF

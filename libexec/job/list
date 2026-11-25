@@ -65,9 +65,16 @@ for job in sorted(jobs, key=lambda job: int(job["id"].split("[")[0])):
 # one line per job in a terminal: the folder (the last column) loses its beginning when it does not fit
 widths = [max(len(row[i]) for row in rows) for i in range(len(rows[0]) - 1)]
 room = shutil.get_terminal_size().columns - sum(widths) - 2 * len(widths)
-for row in rows:
+# the state in color only in a terminal, and not with NO_COLOR set (no-color.org)
+colors = {"R": "\033[32m", "Q": "\033[33m", "H": "\033[33m", "W": "\033[33m"}
+if not sys.stdout.isatty() or os.environ.get("NO_COLOR"):
+    colors = {}
+for number, row in enumerate(rows):
     folder = row[-1]
     if sys.stdout.isatty() and len(folder) > room > 10:
         folder = "…" + folder[len(folder) - room + 1:]
-    print("  ".join(cell.ljust(width) for cell, width in zip(row, widths)) + "  " + folder)
+    cells = [cell.ljust(width) for cell, width in zip(row, widths)]
+    if number > 0 and row[1] in colors:  # not the header
+        cells[1] = colors[row[1]] + cells[1] + "\033[0m"
+    print("  ".join(cells) + "  " + folder)
 '
