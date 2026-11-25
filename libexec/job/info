@@ -161,7 +161,7 @@ fi
 # machine `ssh <node>` runs it by RemoteCommand in ~/.ssh/config (README: SSH to the nodes), and so does VS Code, but
 # without an id only for a session (job session); a batch job needs its id.
 job=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../bin/metacentrum" && pwd)/job
-printf -v from_frontend 'ssh -t %q %q shell %q' "$host" "$job" "$short_id"
+from_frontend="job shell $short_id"
 # the commands without indentation and on lines of their own, so that a triple click selects exactly one of them
 echo
 echo "from a frontend:"

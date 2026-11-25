@@ -78,8 +78,8 @@ A job is no container: its processes run on the node next to those of other user
 with the CPUs and memory of the job (beyond the memory the kernel kills a process of that job, not of others). An SSH
 login to the node is not part of the job, it would have all CPUs and memory of the node. `job shell` therefore finds
 your session on the node and starts the shell inside it (`pbs_attach`), with the home metaenv is installed in, the
-job's scratch and the folder `job session` was started from; all you run from it counts to the job. `job session`
-prints it for a frontend (`ssh -t <node> …/job shell <id>`); from your machine `ssh <node>` and VS Code run it by
+job's scratch and the folder `job session` was started from; all you run from it counts to the job. On a frontend
+`job shell <id>` connects to the node of the job first; from your machine `ssh <node>` and VS Code run it by
 themselves (RemoteCommand, see SSH to the nodes), VS Code with its server, terminals and extensions inside the job.
 
 ### Temporary files in the scratch

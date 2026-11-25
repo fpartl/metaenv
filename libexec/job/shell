@@ -7,7 +7,7 @@
 # of them it asks which one in a terminal, and refuses without one (VS Code) rather than to guess.
 #
 #   job shell               # your session on this node
-#   job shell <job-id>
+#   job shell <job-id>      # also from a frontend: connects to the job's node first
 
 set -euo pipefail
 
@@ -66,13 +66,21 @@ if [[ -z $id ]]; then
 fi
 
 # the full id (with the server): pbs_attach does not find a job by the short one; an unknown job leaves none
-mapfile -t f < <("$here/info" "$id" id Variable_List)
+mapfile -t f < <("$here/info" "$id" id exec_host2 Variable_List)
 if [[ -z ${f[0]} ]]; then
     exit 1
 fi
-id=${f[0]}
+id=${f[0]} job_host=${f[1]%%[:+]*}
+if [[ -z $job_host ]]; then
+    echo "job shell: job ${id%%.*} does not run (job info ${id%%.*})" >&2
+    exit 1
+fi
+# elsewhere (a frontend, another node): on to the job's node, pbs_attach is only there
+if [[ $job_host != "$host" ]]; then
+    exec ssh -t "$job_host" "$job_cmd" shell "$id"
+fi
 var() {
-    grep -o "$1=[^,]*" <<< "${f[1]}" | cut -d= -f2 || true
+    grep -o "$1=[^,]*" <<< "${f[2]}" | cut -d= -f2 || true
 }
 home=$(var PBS_O_HOME) workdir=$(var PBS_O_WORKDIR)
 export HOME=${home:-$HOME} SCRATCHDIR PBS_JOBID=$id   # PBS_JOBID as in a batch job (job info without an id)
