@@ -1,0 +1,57 @@
+#!/bin/bash
+# Your PBS jobs, one per line: id, state, name (sessions of job-session: session-<project>), node, time used of the
+# walltime and the folder it was submitted from. The id is without the server, as qdel, wjo or job-shell take it.
+#
+#   job-list        # jobs that have not finished
+#   job-list -x     # also the finished ones (PBS keeps them for a while)
+
+set -euo pipefail
+
+case ${1:-} in
+    "") finished=() ;;
+    -x) finished=(-x) ;;
+    *)
+        echo "usage: job-list [-x]" >&2
+        exit 2
+        ;;
+esac
+
+mapfile -t ids < <(qselect "${finished[@]}" -u "$USER")
+if (( ${#ids[@]} == 0 )); then
+    echo "job-list: no jobs" >&2
+    exit 0
+fi
+
+# plain `qstat -f` as in job-info (`-F json` is not always valid JSON); all jobs in one call
+qstat "${finished[@]}" -w -f "${ids[@]}" | python3 -c '
+import sys
+
+jobs, attrs, key = [], {}, None
+for line in sys.stdin:
+    line = line.rstrip("\n")
+    if line.startswith("Job Id: "):
+        attrs = {"id": line.removeprefix("Job Id: ").split(".")[0]}
+        jobs.append(attrs)
+    elif line.startswith("\t") and key:  # continuation of a long value
+        attrs[key] += line.lstrip("\t")
+    elif " = " in line:
+        key, value = line.strip().split(" = ", 1)
+        attrs[key] = value
+
+rows = [("id", "state", "name", "node", "time", "folder")]
+for job in sorted(jobs, key=lambda job: int(job["id"].split("[")[0])):
+    variables = dict(v.split("=", 1) for v in job.get("Variable_List", "").split(",") if "=" in v)
+    used = job.get("resources_used.walltime", "-")
+    rows.append((
+        job["id"],
+        job.get("job_state", ""),
+        job.get("Job_Name", ""),
+        job.get("exec_host2", "-").split(":")[0].split("+")[0],
+        used + " / " + job.get("Resource_List.walltime", "?"),
+        variables.get("PBS_O_WORKDIR", ""),
+    ))
+
+widths = [max(len(row[i]) for row in rows) for i in range(len(rows[0]) - 1)]
+for row in rows:
+    print("  ".join(cell.ljust(width) for cell, width in zip(row, widths)) + "  " + row[-1])
+'

@@ -8,6 +8,7 @@ shows how to use it, with examples. The tools that run anywhere are in [`bin/`](
 | command | where | what it does |
 |---|---|---|
 | `job-session [options]` | frontend | a session on a node, prints how to connect (SSH, VS Code); options by `-h` |
+| `job-list [-x]` | frontend | your jobs: state, name, node, time of the walltime, folder; `-x` also finished ones |
 | `wjo <id>`, `wje <id>` | frontend | output / errors of a job: `tail -f` while it runs, `less` once finished |
 | `job-info <id> <attribute>...` | frontend | attributes of a job (also a finished one), one per line |
 | `job-shell [job-id]` | node | a shell inside your job on this node; the RemoteCommand of the nodes (SSH, VS Code) |
