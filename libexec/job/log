@@ -1,19 +1,20 @@
 #!/bin/bash
 # Output (out) or error output (err) of a PBS job: `tail -f` on its node while it runs, `less` once it has finished.
 #
-#   job-log out 1234567     # also `wjo 1234567`, `wje 1234567`
+#   job log out 1234567     # also `wjo 1234567`, `wje 1234567`
 
 set -euo pipefail
 
 if (( $# != 2 )) || [[ ! $1 =~ ^(out|err)$ ]]; then
-    echo "usage: job-log <out|err> <job-id>" >&2
+    echo "usage: job log <out|err> <job-id>" >&2
     exit 2
 fi
 stream=$1
 
 # not $(…), it drops the empty lines of missing attributes at the end (Exit_status of a running job); a failure of
-# job-info gives fewer lines
-mapfile -t f < <(job-info "$2" id job_state exec_host2 Output_Path Error_Path Join_Path Exit_status)
+# job info gives fewer lines
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+mapfile -t f < <("$here/info" "$2" id job_state exec_host2 Output_Path Error_Path Join_Path Exit_status)
 if (( ${#f[@]} != 7 )); then
     exit 1
 fi

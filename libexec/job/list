@@ -1,10 +1,10 @@
 #!/bin/bash
-# Your PBS jobs, one per line: id, state, name (sessions of job-session: session-<project>), node, hours used of the
+# Your PBS jobs, one per line: id, state, name (sessions of job session: session-<project>), node, hours used of the
 # walltime and the folder it was submitted from (in a terminal shortened at its beginning to fit the line). The id is
-# without the server, as job-kill, wjo or job-shell take it.
+# without the server, as job kill, wjo or job shell take it.
 #
-#   job-list        # jobs that have not finished
-#   job-list -x     # also the finished ones (PBS keeps them for a while)
+#   job list        # jobs that have not finished
+#   job list -x     # also the finished ones (PBS keeps them for a while)
 
 set -euo pipefail
 
@@ -12,18 +12,18 @@ case ${1:-} in
     "") finished=() ;;
     -x) finished=(-x) ;;
     *)
-        echo "usage: job-list [-x]" >&2
+        echo "usage: job list [-x]" >&2
         exit 2
         ;;
 esac
 
 mapfile -t ids < <(qselect "${finished[@]}" -u "$USER")
 if (( ${#ids[@]} == 0 )); then
-    echo "job-list: no jobs" >&2
+    echo "job list: no jobs" >&2
     exit 0
 fi
 
-# plain `qstat -f` as in job-info (`-F json` is not always valid JSON); all jobs in one call
+# plain `qstat -f` as in job info (`-F json` is not always valid JSON); all jobs in one call
 qstat "${finished[@]}" -w -f "${ids[@]}" | python3 -c '
 import os
 import shutil

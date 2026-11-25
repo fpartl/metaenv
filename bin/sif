@@ -1,0 +1,38 @@
+#!/bin/bash
+# Singularity images of projects: `sif <command> [arguments]`. Each command is a script in libexec/sif/, the comment at
+# its top shows how to use it. Without a command, the list of them. The job running a project in its image is a PBS
+# script, submitted by qsub: libexec/sif/job (README: Jobs).
+#
+#   sif tag
+#   sif build /storage/<storage>/projects/<project>/images
+
+set -euo pipefail
+
+usage() {
+    cat <<EOF
+usage: sif <command> [arguments]
+  tag [project-dir]                   fingerprint of the environment, sha256(uv.lock + Dockerfile)[:12]
+  build [-n NAME] <images>            <images>/<name>-<tag>.sif from the Dockerfile (your machine: Docker + Apptainer)
+  shell <image.sif> [command...]      a shell or a command in an image, with the GPUs and the job's scratch (node)
+  from-docker <archive.tar> [out.sif] .sif from a \`docker save\` archive, built in the job's scratch (node)
+EOF
+}
+
+if (( $# == 0 )); then
+    usage
+    exit 0
+fi
+case $1 in
+    tag | build | shell | from-docker) ;;
+    -h | --help | help)
+        usage
+        exit 0
+        ;;
+    *)
+        echo "sif: unknown command $1" >&2
+        usage >&2
+        exit 2
+        ;;
+esac
+libexec=$(cd "$(dirname "${BASH_SOURCE[0]}")/../libexec/sif" && pwd)
+exec "$libexec/$1" "${@:2}"

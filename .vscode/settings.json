@@ -16,6 +16,7 @@
         "GSSAPI",
         "kinit",
         "konos",
+        "libexec",
         "lstrip",
         "metacentrum",
         "METAENV",
@@ -30,7 +31,6 @@
         "rstrip",
         "SCRATCHDIR",
         "shellcheck",
-        "sinshell",
         "startswith",
         "venv",
         "walltime"

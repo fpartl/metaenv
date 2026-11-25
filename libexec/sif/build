@@ -1,15 +1,15 @@
 #!/bin/bash
 # On your machine, in the root of a project: the Singularity image of its environment, `<images>/<name>-<tag>.sif`
-# (tag = sif-tag), built from its Dockerfile by Docker and Apptainer. Does nothing when the image exists.
+# (tag = sif tag), built from its Dockerfile by Docker and Apptainer. Does nothing when the image exists.
 #
-#   sif-build /storage/<storage>/projects/<project>/images     # the folder must exist (mkdir -p)
-#   sif-build -n myproject /storage/…/images                   # name other than the folder of the project
+#   sif build /storage/<storage>/projects/<project>/images     # the folder must exist (mkdir -p)
+#   sif build -n myproject /storage/…/images                   # name other than the folder of the project
 
 set -euo pipefail
 
 usage() {
     cat >&2 <<EOF
-usage: sif-build [options] <images-dir>
+usage: sif build [options] <images-dir>
   -n NAME   name of the image (default: the folder of the project)
 EOF
     exit 2
@@ -31,7 +31,7 @@ if [[ ! -d $images ]]; then
 fi
 
 name=${name,,}   # Docker allows only lowercase names
-tag=$(sif-tag .)
+tag=$("$(dirname "${BASH_SOURCE[0]}")/tag" .)
 image="$images/$name-$tag.sif"
 if [[ -f $image ]]; then
     echo "image $image exists"
@@ -53,8 +53,8 @@ apptainer is missing on this machine (install it, e.g. fedora_setup); without it
 here:
 docker save -o $images/$name-$tag.tar $name:$tag
 
-in a job on MetaCentrum (job-session), then delete the .tar:
-docker-to-sif $images/$name-$tag.tar $image
+in a job on MetaCentrum (job session), then delete the .tar:
+sif from-docker $images/$name-$tag.tar $image
 EOF
     exit 1
 fi

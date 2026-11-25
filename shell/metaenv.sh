@@ -1,5 +1,5 @@
 # shellcheck shell=bash
-# metaenv: sourced by ~/.bashrc (see install.sh). Shells without a terminal (scp, rsync, `ssh <frontend> job-session …`)
+# metaenv: sourced by ~/.bashrc (see install.sh). Shells without a terminal (scp, rsync, `ssh <frontend> job session …`)
 # read it too, so it must never print anything. A PBS job starts in the node's own home, without it: a job script that
 # wants it sources this file by its full path.
 
@@ -37,7 +37,7 @@ tmp-to-scratch() {
     mkdir -p "$TMPDIR" "$SINGULARITY_TMPDIR" "$SINGULARITY_CACHEDIR"
 }
 
-# done by itself in a job (a job-session session), not for the general /scratch/$USER outside a job
+# done by itself in a job (a session of `job session`), not for the general /scratch/$USER outside a job
 if [[ -n ${SCRATCHDIR:-} && $SCRATCHDIR != "/scratch/$USER" && -d $SCRATCHDIR && -w $SCRATCHDIR ]]; then
     tmp-to-scratch
 fi

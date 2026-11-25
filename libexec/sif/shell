@@ -1,13 +1,13 @@
 #!/bin/bash
 # A shell (or a command) in a Singularity image, with the GPUs of the node and the job's scratch:
 #
-#   sinshell myproject-3f9a1c2b7d04.sif
-#   sinshell myproject-3f9a1c2b7d04.sif python -c 'import torch; print(torch.cuda.is_available())'
+#   sif shell myproject-3f9a1c2b7d04.sif
+#   sif shell myproject-3f9a1c2b7d04.sif python -c 'import torch; print(torch.cuda.is_available())'
 
 set -euo pipefail
 
 if (( $# < 1 )) || [[ ! -f $1 ]]; then
-    echo "usage: sinshell <image.sif> [command...]" >&2
+    echo "usage: sif shell <image.sif> [command...]" >&2
     exit 2
 fi
 image=$1

@@ -1,17 +1,20 @@
 #!/bin/bash
 # A session on a MetaCentrum node: a batch job that only holds the resources, so you connect to it by SSH or VS Code
 # as many times as you like, and a dropped connection (VPN, sleep) does not end it. Ends with its walltime or
-# `job-kill`. Prints the final qsub command and submits it only after a confirmation.
+# `job kill`. Prints the final qsub command and submits it only after a confirmation.
 #
-#   job-session                  # 2 CPUs, 16 GB RAM, 32 GB scratch, no GPU, 8 hours
-#   job-session -g 1 -m 32       # with a GPU (the default queue routes it to the GPU queues)
-#   job-session -w 48 -l cluster=konos
+#   job session                  # 2 CPUs, 16 GB RAM, 32 GB scratch, no GPU, 8 hours
+#   job session -g 1 -m 32       # with a GPU (the default queue routes it to the GPU queues)
+#   job session -w 48 -l cluster=konos
 
 set -euo pipefail
 
+# job info is next to this script
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
 usage() {
     cat >&2 <<EOF
-usage: job-session [options]
+usage: job session [options]
   -c CPUS             CPUs (2)
   -g GPUS             GPUs (0)
   -l RESOURCE=VALUE   extra resource of the node, repeatable (e.g. cluster=konos, city=plzen)
@@ -59,7 +62,7 @@ echo "job $id submitted, waiting until it runs (Ctrl+C stops waiting, not the jo
 waiting=1
 on_exit() {
     if (( waiting )); then
-        echo "the job stays queued, end it with: job-kill $id" >&2
+        echo "the job stays queued, end it with: job kill $id" >&2
     fi
 }
 trap on_exit EXIT
@@ -67,8 +70,8 @@ trap 'echo >&2; exit 130' INT
 
 last=""
 while true; do
-    # not $(…), it drops the empty lines of missing attributes at the end; a failure of job-info gives fewer lines
-    mapfile -t f < <(job-info "$id" job_state comment)
+    # not $(…), it drops the empty lines of missing attributes at the end; a failure of job info gives fewer lines
+    mapfile -t f < <("$here/info" "$id" job_state comment)
     if (( ${#f[@]} != 2 )); then
         exit 1
     fi
@@ -96,6 +99,6 @@ while true; do
     sleep 10
 done
 
-# the job and how to connect to it; `job-info -c <id>` prints it again (e.g. after this terminal is closed)
+# the job and how to connect to it; `job info -c <id>` prints it again (e.g. after this terminal is closed)
 echo
-exec job-info -c "$id"
+exec "$here/info" -c "$id"

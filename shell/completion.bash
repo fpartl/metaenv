@@ -1,11 +1,47 @@
 # shellcheck shell=bash
-# Tab completion of the metaenv tools, sourced by metaenv.sh in interactive shells. Tab completes job ids (from qstat,
-# newest first) and files of the right type. With fzf loaded (`eval "$(fzf --bash)"`), `wjo **<Tab>` picks the job in
-# fzf, with its state, name and queue; only the id goes to the command line.
+# Tab completion of the metaenv tools, sourced by metaenv.sh in interactive shells: the commands of `job` and `sif`,
+# then job ids (from qstat, newest first) and files of the right type. With fzf loaded (`eval "$(fzf --bash)"`),
+# `job info **<Tab>` picks the job in fzf, with its state, name and queue; only the id goes to the command line.
 
-# bin/: anywhere
-complete -d sif-tag
-complete -d sif-build
+# Completes the current word with the given words.
+_metaenv_complete_words() {
+    mapfile -t COMPREPLY < <(compgen -W "$1" -- "${COMP_WORDS[COMP_CWORD]}")
+}
+
+# Completes the current word with files matching the glob (e.g. '*.sif') and folders.
+_metaenv_complete_file() {
+    local cur=${COMP_WORDS[COMP_CWORD]}
+    compopt -o filenames
+    mapfile -t COMPREPLY < <(compgen -f -X "!$1" -- "$cur"; compgen -d -- "$cur")
+}
+
+# sif <command>: anywhere (bin/)
+_metaenv_sif() {
+    if (( COMP_CWORD == 1 )); then
+        _metaenv_complete_words "tag build shell from-docker"
+        return
+    fi
+    case ${COMP_WORDS[1]} in
+        tag | build)
+            compopt -o filenames
+            mapfile -t COMPREPLY < <(compgen -d -- "${COMP_WORDS[COMP_CWORD]}")
+            ;;
+        shell)
+            # the image, then a command in it (default completion)
+            if (( COMP_CWORD == 2 )); then
+                _metaenv_complete_file '*.sif'
+            fi
+            ;;
+        from-docker)
+            if (( COMP_CWORD == 2 )); then
+                _metaenv_complete_file '*.tar'
+            elif (( COMP_CWORD == 3 )); then
+                _metaenv_complete_file '*.sif'
+            fi
+            ;;
+    esac
+}
+complete -F _metaenv_sif -o default sif
 
 [[ $HOME == /storage/* ]] || return 0
 
@@ -33,60 +69,65 @@ _metaenv_fzf_job_post() {
     cut -d' ' -f1
 }
 
-# Completes the current word with files matching the glob (e.g. '*.sif') and folders.
-_metaenv_complete_file() {
-    local cur=${COMP_WORDS[COMP_CWORD]}
-    compopt -o filenames
-    mapfile -t COMPREPLY < <(compgen -f -X "!$1" -- "$cur"; compgen -d -- "$cur")
+# job <command>: ids of unfinished jobs for shell, extend and kill, also of finished ones for info and log
+_metaenv_job() {
+    if (( COMP_CWORD == 1 )); then
+        _metaenv_complete_words "session list info shell extend kill log"
+        return
+    fi
+    case ${COMP_WORDS[1]} in
+        list) _metaenv_complete_words "-x" ;;
+        info)
+            if [[ ${COMP_WORDS[COMP_CWORD]} == -* ]]; then
+                _metaenv_complete_words "-c -e -v"
+            else
+                _metaenv_complete_job -x
+            fi
+            ;;
+        shell)
+            if (( COMP_CWORD == 2 )); then
+                _metaenv_complete_job
+            fi
+            ;;
+        extend)
+            # job ids start with a digit, so a word starting with a letter can only be `info`
+            if (( COMP_CWORD == 2 )) && [[ ${COMP_WORDS[2]} == [a-z]* ]]; then
+                _metaenv_complete_words "info"
+            elif (( COMP_CWORD == 2 )); then
+                _metaenv_complete_job
+            fi
+            ;;
+        kill) _metaenv_complete_job ;;
+        log)
+            if (( COMP_CWORD == 2 )); then
+                _metaenv_complete_words "out err"
+            elif (( COMP_CWORD == 3 )); then
+                _metaenv_complete_job -x
+            fi
+            ;;
+    esac
 }
+complete -F _metaenv_job job
 
-# job id, also of a finished job: wjo <id>, wje <id>, job-info [id [attribute...]], job-log <out|err> <id>
+# wjo <id>, wje <id>: also a finished job
 _metaenv_wjo() {
     if (( COMP_CWORD == 1 )); then
         _metaenv_complete_job -x
     fi
 }
-complete -F _metaenv_wjo wjo wje job-info
+complete -F _metaenv_wjo wjo wje
 
-_metaenv_job_log() {
-    if (( COMP_CWORD == 1 )); then
-        mapfile -t COMPREPLY < <(compgen -W "out err" -- "${COMP_WORDS[COMP_CWORD]}")
-    elif (( COMP_CWORD == 2 )); then
-        _metaenv_complete_job -x
-    fi
-}
-complete -F _metaenv_job_log job-log
-
-# a job that has not finished: qdel <id>..., job-kill <id>..., job-shell [id]; qextend <id> <hh:mm:ss> | info,
-# job-extend <id> <hours> | info
+# PBS's own commands: qdel <id>..., qextend <id> <hh:mm:ss> | info
 _metaenv_qdel() {
     _metaenv_complete_job
 }
-complete -F _metaenv_qdel qdel job-kill job-shell
+complete -F _metaenv_qdel qdel
 
 _metaenv_qextend() {
-    # job ids start with a digit, so a word starting with a letter can only be `info`
     if (( COMP_CWORD == 1 )) && [[ ${COMP_WORDS[1]} == [a-z]* ]]; then
-        mapfile -t COMPREPLY < <(compgen -W "info" -- "${COMP_WORDS[1]}")
+        _metaenv_complete_words "info"
     elif (( COMP_CWORD == 1 )); then
         _metaenv_complete_job
     fi
 }
-complete -F _metaenv_qextend qextend job-extend
-
-# images: sinshell <image.sif> [command...], docker-to-sif <archive.tar> [output.sif]
-_metaenv_sinshell() {
-    if (( COMP_CWORD == 1 )); then
-        _metaenv_complete_file '*.sif'
-    fi
-}
-complete -F _metaenv_sinshell -o default sinshell
-
-_metaenv_docker_to_sif() {
-    if (( COMP_CWORD == 1 )); then
-        _metaenv_complete_file '*.tar'
-    elif (( COMP_CWORD == 2 )); then
-        _metaenv_complete_file '*.sif'
-    fi
-}
-complete -F _metaenv_docker_to_sif docker-to-sif
+complete -F _metaenv_qextend qextend

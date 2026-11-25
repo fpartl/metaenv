@@ -1,30 +1,32 @@
 #!/bin/bash
-# A PBS job (also a finished one): an overview, with -c also the commands to connect to it while it runs (as job-session
-# prints them), -v all of the extras (so far only -c); or the given attributes one per line in their order (an empty
-# line when missing). Without an id, the job you are in (PBS_JOBID: a batch job, the shell of job-shell).
+# A PBS job (also a finished one): an overview, with -c also the commands to connect to it while it runs (as job session
+# prints them), with -e how much of its CPUs and memory it uses, -v all of these; or the given attributes one per line
+# in their order (an empty line when missing). Without an id, the job you are in (PBS_JOBID: a batch job, job shell).
 #
-#   job-info                                         # the job you are in
-#   job-info -c 1234567                              # its state, resources, time, folders and how to connect
-#   job-info -v 1234567                              # all of it
-#   job-info 1234567 job_state exec_host2 Output_Path   # `id` is the full job id; all attributes: qstat -xwf <id>
+#   job info                                         # the job you are in
+#   job info -c 1234567                              # its state, resources, time, folders and how to connect
+#   job info -e 1234567                              # how much of the requested CPUs and memory it uses
+#   job info -v 1234567                              # all of it
+#   job info 1234567 job_state exec_host2 Output_Path   # `id` is the full job id; all attributes: qstat -xwf <id>
 
 set -euo pipefail
 
 usage() {
-    echo "usage: job-info [-c|-v] [job-id] | job-info <job-id> <attribute>... (without an id only in a job)" >&2
+    echo "usage: job info [-c] [-e] [-v] [job-id] | job info <job-id> <attribute>... (without an id only in a job)" >&2
     exit 2
 }
 
-connect=0
-while getopts "cv" opt; do
+connect=0 efficiency=0
+while getopts "cev" opt; do
     case $opt in
         c) connect=1 ;;
-        v) connect=1 ;;   # -v: every extra, so far only -c
+        e) efficiency=1 ;;
+        v) connect=1 efficiency=1 ;;   # every extra
         *) usage ;;
     esac
 done
 shift $(( OPTIND - 1 ))
-if (( $# == 0 )) && [[ -z ${PBS_JOBID:-} ]] || (( connect && $# > 1 )); then
+if (( $# == 0 )) && [[ -z ${PBS_JOBID:-} ]] || (( (connect || efficiency) && $# > 1 )); then
     usage
 fi
 id=${1:-$PBS_JOBID}
@@ -62,12 +64,12 @@ fi
 mapfile -t f < <(attributes id Job_Name job_state comment Exit_status exec_host2 Resource_List.ncpus \
     Resource_List.mem Resource_List.ngpus Resource_List.scratch_local Resource_List.scratch_ssd \
     Resource_List.scratch_shared Resource_List.scratch_shm stime Resource_List.walltime resources_used.walltime \
-    Variable_List)
+    Variable_List resources_used.cput resources_used.mem)
 if [[ -z ${f[0]} ]]; then
     exit 1
 fi
 short_id=${f[0]%%.*} name=${f[1]} state=${f[2]} comment=${f[3]} exit_status=${f[4]} host=${f[5]%%[:+]*}
-stime=${f[13]} walltime=${f[14]} used=${f[15]}
+stime=${f[13]} walltime=${f[14]} used=${f[15]} cput=${f[17]} mem_used=${f[18]}
 var() {
     grep -o "$1=[^,]*" <<< "${f[16]}" | cut -d= -f2 || true
 }
@@ -115,16 +117,44 @@ job $short_id  $name
   folder     $folder
 EOF
 
+# hh:mm:ss -> seconds
+seconds() {
+    local h m s
+    IFS=: read -r h m s <<< "$1"
+    echo $(( 10#$h * 3600 + 10#$m * 60 + 10#$s ))
+}
+# a size of PBS (16gb, 3355443kb, ...) -> kB
+kilobytes() {
+    local number=${1%%[a-z]*} unit=${1##*[0-9]}
+    case $unit in
+        b) echo $(( number / 1024 )) ;;
+        kb) echo "$number" ;;
+        mb) echo $(( number * 1024 )) ;;
+        gb) echo $(( number * 1024 ** 2 )) ;;
+        tb) echo $(( number * 1024 ** 3 )) ;;
+    esac
+}
+# The average use of the requested CPUs (CPU time of the job's processes over the time it runs) and the memory used,
+# as PBS measures them in the job's cgroup; nothing before the job runs.
+if (( efficiency )) && [[ -n $used && -n $cput && -n $mem_used ]] && (( $(seconds "$used") > 0 )); then
+    cpu_use=$(( 100 * $(seconds "$cput") / ($(seconds "$used") * f[6]) ))
+    mem_kb=$(kilobytes "$mem_used") mem_requested_kb=$(kilobytes "${f[7]}")
+    mem_use=$(( 100 * mem_kb / mem_requested_kb ))
+    mem_gb=$(awk -v kb="$mem_kb" 'BEGIN { printf "%.1f", kb / 1024 / 1024 }')
+    echo "  cpu use    $cpu_use% of ${f[6]} CPUs (CPU time $cput)"
+    echo "  mem use    $mem_use% of ${f[7]} ($mem_gb gb)"
+fi
+
 if (( ! connect )) || [[ $state != running ]]; then
     exit 0
 fi
 
-# An SSH login to the node lands outside the job, in the node's own home; job-shell moves the shell into the job
+# An SSH login to the node lands outside the job, in the node's own home; job shell moves the shell into the job
 # (pbs_attach: its CPUs and memory), with the home metaenv is installed in, the scratch and the folder. From your
 # machine `ssh <node>` runs it by RemoteCommand in ~/.ssh/config (README: SSH to the nodes), and so does VS Code, but
-# without an id only for a session (job-session); a batch job needs its id.
-job_shell=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/job-shell
-printf -v from_frontend 'ssh -t %q %q %q' "$host" "$job_shell" "$short_id"
+# without an id only for a session (job session); a batch job needs its id.
+job=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../bin/metacentrum" && pwd)/job
+printf -v from_frontend 'ssh -t %q %q shell %q' "$host" "$job" "$short_id"
 # the commands without indentation and on lines of their own, so that a triple click selects exactly one of them
 echo
 echo "from a frontend:"
@@ -137,13 +167,13 @@ if [[ $name == session-* ]]; then
     echo "VS Code (README: SSH to the nodes):"
     printf 'code --remote ssh-remote+%s %q\n' "$host" "$folder"
 else
-    echo "ssh -o RemoteCommand='$job_shell $short_id' $host"
+    echo "ssh -o RemoteCommand='$job shell $short_id' $host"
 fi
 cat <<EOF
 
 extend it:
-job-extend $short_id <hours>
+job extend $short_id <hours>
 
 end it:
-job-kill $short_id
+job kill $short_id
 EOF

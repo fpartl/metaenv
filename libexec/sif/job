@@ -5,11 +5,11 @@
 #
 #   qsub -l select=1:ncpus=4:mem=16gb:scratch_local=20gb -l walltime=4:00:00 \
 #       -v REPO=<git url or path>,COMMIT=<sha>,IMAGES=<dir of images>,CMD='<command>'[,OUTPUT=output,OUTPUT_TO=<dir>] \
-#       /…/metaenv/bin/metacentrum/sif-job
+#       /…/metaenv/libexec/sif/job
 #
 # 1. clones REPO into the scratch and checks out COMMIT;
 # 2. takes the image `IMAGES/<name>-<tag>.sif` of that commit (name = NAME or the name of the repository, tag as in
-#    sif-tag), fails at once when it is missing;
+#    sif tag), fails at once when it is missing;
 # 3. runs CMD in the image, with the clone at /app (the image keeps its environment outside /app, e.g. /opt/venv);
 # 4. copies OUTPUT (a folder of the clone, `output` by default) into OUTPUT_TO, when given, and cleans the scratch;
 #    when the copying fails, the scratch stays for a manual rescue.
@@ -47,10 +47,10 @@ git clone --quiet "$REPO" "$repo"
 git -C "$repo" checkout --quiet --detach "$COMMIT"
 
 name=${NAME:-$(basename "$REPO" .git)}
-tag=$(cat "$repo/uv.lock" "$repo/Dockerfile" | sha256sum | cut -c1-12)   # the same as sif-tag
+tag=$(cat "$repo/uv.lock" "$repo/Dockerfile" | sha256sum | cut -c1-12)   # the same as sif tag
 image="$IMAGES/${name,,}-$tag.sif"
 if [[ ! -f $image ]]; then
-    echo "missing image $image, build it in the project at this commit: sif-build $IMAGES" >&2
+    echo "missing image $image, build it in the project at this commit: sif build $IMAGES" >&2
     exit 1
 fi
 
