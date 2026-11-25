@@ -109,7 +109,7 @@ cat <<EOF
 job $id runs
   node     $host
   scratch  $scratchdir
-  ends     $(date -d "+$hours hours" '+%Y-%m-%d %H:%M') (extend it by qextend)
+  ends     $(date -d "+$hours hours" '+%Y-%m-%d %H:%M') (extend it by job-extend)
 
 from a frontend:
 $from_frontend

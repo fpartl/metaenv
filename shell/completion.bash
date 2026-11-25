@@ -57,7 +57,8 @@ _metaenv_job_log() {
 }
 complete -F _metaenv_job_log job-log
 
-# a job that has not finished: qdel <id>..., job-kill <id>..., job-shell [id], qextend <id> <hh:mm:ss> | info
+# a job that has not finished: qdel <id>..., job-kill <id>..., job-shell [id]; qextend <id> <hh:mm:ss> | info,
+# job-extend <id> <hours> | info
 _metaenv_qdel() {
     _metaenv_complete_job
 }
@@ -71,7 +72,7 @@ _metaenv_qextend() {
         _metaenv_complete_job
     fi
 }
-complete -F _metaenv_qextend qextend
+complete -F _metaenv_qextend qextend job-extend
 
 # images: sinshell <image.sif> [command...], docker-to-sif <archive.tar> [output.sif]
 _metaenv_sinshell() {

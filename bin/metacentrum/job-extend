@@ -1,0 +1,27 @@
+#!/bin/bash
+# Extends the walltime of a running PBS job by whole hours (qextend of MetaCentrum, which limits how much you extend in
+# 30 days) and prints its new end; `info` shows what is left of the limit.
+#
+#   job-extend 1234567 8      # 8 more hours
+#   job-extend info
+
+set -euo pipefail
+
+if [[ ${1:-} == info && $# == 1 ]]; then
+    exec qextend info
+fi
+if (( $# != 2 )) || [[ ! $2 =~ ^[1-9][0-9]*$ ]]; then
+    echo "usage: job-extend <job-id> <hours> | job-extend info" >&2
+    exit 2
+fi
+id=$1 hours=$2
+
+# job-info is next to this script
+PATH=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd):$PATH
+
+qextend "$id" "$hours:00:00"
+mapfile -t f < <(job-info "$id" Resource_List.walltime resources_used.walltime)
+IFS=: read -r wh wm ws <<< "${f[0]}"
+IFS=: read -r uh um us <<< "${f[1]:-0:0:0}"
+left=$(( (10#$wh - 10#$uh) * 3600 + (10#$wm - 10#$um) * 60 + 10#$ws - 10#$us ))
+echo "job $id: walltime ${f[0]}, ends $(date -d "+$left seconds" '+%Y-%m-%d %H:%M')"

@@ -9,6 +9,7 @@ shows how to use it, with examples. The tools that run anywhere are in [`bin/`](
 |---|---|---|
 | `job-session [options]` | frontend | a session on a node, prints how to connect (SSH, VS Code); options by `-h` |
 | `job-list [-x]` | frontend | your jobs: state, name, node, time of the walltime, folder; `-x` also finished ones |
+| `job-extend <id> <hours>` | frontend | more hours for a running job (`qextend`), prints its new end; `info`: limit |
 | `job-kill <id>...` | frontend | ends jobs (`qdel`) after showing which ones and a confirmation |
 | `wjo <id>`, `wje <id>` | frontend | output / errors of a job: `tail -f` while it runs, `less` once finished |
 | `job-info <id> <attribute>...` | frontend | attributes of a job (also a finished one), one per line |
@@ -47,8 +48,8 @@ the shell on a node gets this home from `job-shell` (see Sessions), with its `.b
 ### Tab completion
 
 In a terminal, `metaenv.sh` also loads [`shell/completion.bash`](shell/completion.bash): Tab completes your job ids
-(newest first) in `wjo`, `wje`, `job-log`, `job-info` (also finished jobs) and `job-kill`, `qdel`, `qextend`,
-`job-shell` (only unfinished ones), `.sif` images in `sinshell` and `docker-to-sif`, `.tar` archives in
+(newest first) in `wjo`, `wje`, `job-log`, `job-info` (also finished jobs) and `job-kill`, `job-extend`, `qdel`,
+`qextend`, `job-shell` (only unfinished ones), `.sif` images in `sinshell` and `docker-to-sif`, `.tar` archives in
 `docker-to-sif`. With
 [fzf](https://github.com/junegunn/fzf) loaded in the shell (`eval "$(fzf --bash)"`), `wjo **<Tab>` opens a list of the
 jobs with their state, name and queue, and puts the id of the chosen one on the command line.
