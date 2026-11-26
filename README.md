@@ -15,7 +15,6 @@ comment at its top shows how to use it, with examples. `sif` runs anywhere ([`bi
 | `job extend [id] <hours>` | frontend, job | more hours for a running job (`qextend`) |
 | `job kill <id>...` | frontend | ends jobs (`qdel`) after showing which ones and a confirmation |
 | `job log out\|err <id>`, `wjo`, `wje` | frontend | output / errors of a job: `tail -f` while it runs, else `less` |
-| `job run <command>...` | job | a command of a uv project, its environment in the scratch; `COMMIT`: of a commit |
 | `sif tag [project-dir]` | anywhere | fingerprint of the environment, `sha256(uv.lock + Dockerfile)[:12]` |
 | `sif build [-n NAME] <images>` | your machine | `<images>/<name>-<tag>.sif` from the Dockerfile (Docker + Apptainer) |
 | `sif shell <image.sif> [command...]` | node | a shell or a command in an image, with the GPUs and the job's scratch |
@@ -26,199 +25,22 @@ Without an id, `job info`, `job extend` and `job shell` take the job you are in 
 
 ## Installation
 
-**MetaCentrum.** On your frontend (e.g. nympha, home `/storage/plzen1/home/$USER`), clone into its home and put it
-into its `~/.bashrc`:
+On your MetaCentrum frontend (e.g. nympha) and on your machine:
 
 ```bash
 git clone https://github.com/fpartl/metaenv.git ~/tools/metaenv
 ~/tools/metaenv/install.sh
 ```
 
-`install.sh` puts a block (`# >>> metaenv >>>`) at the top of `~/.bashrc`, before any part for interactive shells
-only, so the tools are on `PATH` also in `ssh <frontend> job session …`. Running it again replaces the block (and
-removes the block of the old metaenv); the previous file is kept as `.bashrc.metaenv.bak`. Update by `git pull`.
+## Documentation
 
-**From the old metaenv** (`src/*.sh`, the block `# metaenv stuff`): run `install.sh` right after the `git pull` (or
-checkout). Until then the old block sources files that no longer exist and every shell prints errors, also `scp`.
-The old `~/.metaenv_user_conf` is not used any more and can be deleted.
-
-Only this one home is set up. Every storage has its own home and a node logs you into the one nearest to it, so
-the shell on a node gets this home from `job shell` (see Sessions), with its `.bashrc`, metaenv and configuration.
-
-**Your machine.** Clone anywhere and run `install.sh` the same way. `shell/metaenv.sh` puts `bin/metacentrum/` on
-`PATH` only when `HOME` is on `/storage` (MetaCentrum), so your machine gets just `bin/`: `sif`. `sif build` needs
-Docker and [Apptainer](https://apptainer.org/) (`sudo dnf install apptainer`).
-
-### Tab completion
-
-In a terminal, `metaenv.sh` also loads [`shell/completion.bash`](shell/completion.bash): Tab completes the commands
-of `job` and `sif`, then the ids of your jobs that have not finished, as `job list` (newest first; also in `qdel` and
-`qextend`; `job log`, `wjo` and `wje` also finished ones, see `job list -x`), `.sif` images and `.tar` archives.
-With [fzf](https://github.com/junegunn/fzf) loaded in the shell (`eval "$(fzf --bash)"`), `job info **<Tab>` opens a
-list of the jobs with their state, name and queue, and puts the id of the chosen one on the command line.
-
-Aliases are up to you, e.g. `alias ji='job info'` in `~/.bashrc`.
-
-## Sessions
-
-```bash
-job session                  # 2 CPUs, 16 GB RAM, 32 GB local scratch, no GPU, 8 hours
-job session -g 1 -m 32       # with a GPU, the default queue routes it to the GPU queues
-job session -w 48 -l cluster=konos
-```
-
-The session is a batch job that only sleeps and holds the resources. `job session` first prints the final `qsub`
-command and submits it only after you confirm it (`y`). Then it waits until the job runs and prints the node, its
-scratch and the commands to connect (SSH, VS Code), which open the folder `job session` was started from, so start it
-in the project you work on. Ctrl+C stops the waiting, not the job; `job info -c <id>` prints it all again (`job list`
-shows the id). Connect as many times as you like, a dropped connection does not end the session; end it by
-`job kill <id>` (or let the walltime run out). `job info -e <id>` shows how much of the requested CPUs and memory it
-uses (as PBS measures them), to size the next one; `-ee` also of the scratch and GPUs, measured on the node (`du`,
-`nvidia-smi` inside the job), which takes longer.
-
-A job is no container: its processes run on the node next to those of other users, PBS only puts them into a cgroup
-with the CPUs and memory of the job (beyond the memory the kernel kills a process of that job, not of others). An SSH
-login to the node is not part of the job, it would have all CPUs and memory of the node. `job shell` therefore finds
-your session on the node and starts the shell inside it (`pbs_attach`), with the home metaenv is installed in, the
-job's scratch and the folder `job session` was started from; all you run from it counts to the job. On a frontend
-`job shell <id>` connects to the node of the job first; from your machine `ssh <node>` and VS Code run it by
-themselves (RemoteCommand, see SSH to the nodes), VS Code with its server, terminals and extensions inside the job.
-
-### Temporary files in the scratch
-
-`/tmp` of a node has a small limit and some libraries write large intermediate results there. In a job (the SSH
-session of `job session`), metaenv therefore points `TMPDIR`, `SINGULARITY_TMPDIR` and `SINGULARITY_CACHEDIR` into the
-job's scratch by itself; `tmp-to-scratch` does the same by hand, e.g. after `SCRATCHDIR` changed. The job script of
-`sif` (`libexec/sif/job`) sets `TMPDIR` on its own.
-
-A PBS job starts in the node's own home, without metaenv (unlike the shell of `job shell`). Your own job script gets it
-by `source /storage/plzen1/home/$USER/tools/metaenv/shell/metaenv.sh`.
-
-### SSH to the nodes from your machine
-
-The nodes are reached through a frontend (`ProxyJump`): the frontend only forwards the connection, so nothing runs on
-it. Both hops authenticate by your Kerberos ticket (`kinit $USER@META`), so `~/.ssh/config` needs:
-
-```ssh-config
-Host nympha
-    HostName nympha.zcu.cz
-
-# MetaCentrum nodes (add the domain of a node that is not covered): through the frontend, into your job there
-Host *.metacentrum.cz *.cesnet.cz *.cerit-sc.cz *.fav.zcu.cz *.meta.zcu.cz *.muni.cz *.cuni.cz *.elixir-czech.cz
-    ProxyJump nympha
-    RequestTTY yes
-    RemoteCommand /storage/plzen1/home/<you>/tools/metaenv/bin/metacentrum/job shell
-
-Host nympha *.metacentrum.cz *.cesnet.cz *.cerit-sc.cz *.fav.zcu.cz *.meta.zcu.cz *.muni.cz *.cuni.cz *.elixir-czech.cz
-    GSSAPIAuthentication yes
-    GSSAPIDelegateCredentials yes
-    GSSAPIKeyExchange yes
-```
-
-`GSSAPIKeyExchange` verifies the host by Kerberos, so a new node does not ask to accept its host key. The patterns
-match also the `HostName` of an alias, so a machine that is not a node but is in these domains (e.g. your server
-`*.fav.zcu.cz`, a frontend other than nympha) needs a block before them; the first value of an option wins:
-
-```ssh-config
-Host myserver.fav.zcu.cz skirit.ics.muni.cz
-    ProxyJump none
-    RemoteCommand none
-    RequestTTY auto
-```
-
-`ssh -G <host> | grep -Ei 'proxyjump|remotecommand'` shows what a host gets.
-
-`ssh <node>` then gives a shell inside your session (`job session`) on that node, batch jobs are not considered; with
-more of your sessions there it asks which one, and VS Code (no terminal to ask in) refuses with their list. Without a
-session on the node it refuses too, work on a node belongs to a job. Into a batch job by its id:
-`ssh -o RemoteCommand='<…>/job shell <id>' <node>`; to the node itself (e.g. the scratch of a failed job):
-`ssh -o RemoteCommand=none <node>`.
-
-A command or a file transfer to a node (`ssh <node> <command>`, `scp`, `rsync`) does not go with RemoteCommand, SSH
-refuses both at once; give it `-o RemoteCommand=none` (rsync: `-e 'ssh -o RemoteCommand=none'`).
-
-VS Code (Remote - SSH) opens a folder on the node, `code --remote ssh-remote+<node> <folder>` as `job session` prints
-it, through the same configuration. It skips RemoteCommand unless its setting allows it, once in its `settings.json`:
-
-```json
-"remote.SSH.enableRemoteCommand": true
-```
-
-### SSH on the nodes
-
-`ssh` on a node (also of `scp`, `rsync`, git and `uv sync` with git dependencies) works as on the frontend, with
-nothing to set up. It reads `~/.ssh` of the home in passwd (`getent passwd $USER`), the node's own one, not of `HOME`
-set by `job shell`; `job shell` therefore links `~/.ssh` there to `~/.ssh` of `HOME` when it is missing, once for every
-storage a node logs you into. An existing `~/.ssh` there stays, `job shell` prints how to replace it.
-
-`uv sync` hides any question of ssh behind its progress and hangs, also on the frontend: a host new to `known_hosts`
-(connect to it once by `ssh`) or a key with a passphrase. For the latter, the default key without a passphrase (on the
-frontend, added to the git server):
-
-```bash
-ssh-keygen -t ed25519 -N '' -f ~/.ssh/id_ed25519
-```
-
-## Images of projects
-
-A project is run on MetaCentrum in a Singularity image of its environment, named by its fingerprint:
-`<images>/<project>-<tag>.sif` with `tag` = `sif tag` = the first 12 hex digits of sha256 of `uv.lock` followed by
-`Dockerfile`. Any change of the dependencies therefore means a new image, and a commit always finds the image of its
-own environment; old images stay for old commits.
-
-The image holds only the environment, outside `/app` (e.g. `UV_PROJECT_ENVIRONMENT=/opt/venv` with the project
-installed editable from `/app`); the job (below) mounts the clone of the commit over `/app`.
-
-`<images>` is a folder of your choice, nothing creates it for you. An image takes one to several GB, so put it on the
-storage of your project rather than into your home, and create it once:
-
-```bash
-mkdir -p /storage/<storage>/projects/<project>/images
-cd ~/projects/<project>
-sif build /storage/<storage>/projects/<project>/images     # does nothing when the image exists
-```
-
-Without Apptainer, `docker save` the image and convert it in a job on MetaCentrum by `sif from-docker` (`sif build`
-prints the commands).
-
-### Jobs
-
-```bash
-qsub -l select=1:ncpus=4:mem=16gb:scratch_local=20gb -l walltime=4:00:00 \
-    -v REPO=<git url or path>,COMMIT=<sha>,IMAGES=<dir>,CMD='<command>',OUTPUT_TO=<dir> \
-    /storage/plzen1/home/$USER/tools/metaenv/libexec/sif/job
-```
-
-The job clones `REPO` into the scratch, checks out `COMMIT`, picks the image of that commit (fails at once when it
-is missing), runs `CMD` in it at `/app` and copies `OUTPUT` (default `output`) into `OUTPUT_TO`. The scratch is
-cleaned at the end, unless the copying failed. `NAME` overrides the name of the image (default: the repository name).
-
-## uv projects without an image
-
-A project whose dependencies are all Python packages needs no image: uv installs them on the node, PyTorch's CUDA
-wheels bring CUDA along and need only the driver of the node. Develop and debug it in a session (`job session -g 1`,
-VS Code), run it as a job by a job script of the project, which calls its command by `job run` (as `uv run`):
-
-```bash
-#!/bin/bash
-#PBS -l select=1:ncpus=4:ngpus=1:mem=16gb:scratch_local=20gb
-#PBS -l walltime=4:00:00
-#PBS -N train
-# qsub -v COMMIT=$(git rev-parse HEAD),EPOCHS=10 app/train.sh      (in the project)
-
-set -euo pipefail
-: "${EPOCHS:?missing EPOCHS}"
-trap clean_scratch EXIT TERM
-"/storage/plzen1/home/$USER/tools/metaenv/bin/metacentrum/job" run python app/train.py --epochs "$EPOCHS"
-```
-
-`job run` runs the command in the folder qsub was run in, in the environment of `uv.lock` synced into the scratch by
-`uv sync --frozen --offline`. With `COMMIT`, in a clone of that commit in the scratch: changes of the project after
-`qsub` (e.g. while hundreds of jobs wait) do not get into the job. Clone and `--offline` keep the job away from the
-network: no git server, no SSH keys on the node, also dependencies from a git server come from uv's cache in your home.
-A dependency missing in the cache ends the job at once; `uv sync` of the project, on a frontend or in a session, puts it
-there. Without `COMMIT`, e.g. in a session, it runs the working tree. A batch job does not read `~/.bashrc`, hence the
-full path of `job`; results go to a folder on the storage, the scratch is cleaned at the end.
+| | |
+|---|---|
+| [Installation](docs/installation.md) | what `install.sh` does, the old metaenv, your machine, Tab completion |
+| [Sessions](docs/sessions.md) | `job session`, `job shell` inside a job, temporary files in the scratch |
+| [SSH](docs/ssh.md) | `ssh <node>` and VS Code from your machine into your job, git and ssh on the nodes |
+| [Job scripts of uv projects](docs/job_scripts.md) | a job at an exact commit by plain `qsub`, the snippet to copy |
+| [Images of projects](docs/images.md) | Singularity images by `sif`, a job in the image of a commit |
 
 ## Development
 

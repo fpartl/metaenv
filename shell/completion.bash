@@ -123,7 +123,7 @@ _metaenv_fzf_job_post() {
 # the state shows and finished ones can be filtered out.
 _metaenv_job() {
     if (( COMP_CWORD == 1 )); then
-        _metaenv_complete_words "session list info shell attach extend kill log run"
+        _metaenv_complete_words "session list info shell attach extend kill log"
         return
     fi
     case ${COMP_WORDS[1]} in
@@ -186,13 +186,6 @@ _metaenv_job() {
                 _metaenv_complete_words "out err"
             elif (( COMP_CWORD == 3 )); then
                 _metaenv_complete_job -x
-            fi
-            ;;
-        run)
-            # a command, then its arguments (bash's default completion), as after `uv run`
-            compopt -o default
-            if (( COMP_CWORD == 2 )); then
-                mapfile -t COMPREPLY < <(compgen -c -- "${COMP_WORDS[2]}")
             fi
             ;;
     esac

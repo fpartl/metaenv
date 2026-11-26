@@ -1,7 +1,7 @@
 #!/bin/bash
 # Singularity images of projects: `sif <command> [arguments]`. Each command is a script in libexec/sif/, the comment at
 # its top shows how to use it. Without a command, the list of them. The job running a project in its image is a PBS
-# script, submitted by qsub: libexec/sif/job (README: Jobs).
+# script, submitted by qsub: libexec/sif/job (docs/images.md).
 #
 #   sif tag
 #   sif build /storage/<storage>/projects/<project>/images

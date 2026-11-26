@@ -185,7 +185,7 @@ fi
 
 # An SSH login to the node lands outside the job, in the node's own home; job shell moves the shell into the job
 # (pbs_attach: its CPUs and memory), with the home metaenv is installed in, the scratch and the folder. From your
-# machine `ssh <node>` runs it by RemoteCommand in ~/.ssh/config (README: SSH to the nodes), and so does VS Code, but
+# machine `ssh <node>` runs it by RemoteCommand in ~/.ssh/config (docs/ssh.md), and so does VS Code, but
 # without an id only for a session (job session); a batch job needs its id.
 job=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../bin/metacentrum" && pwd)/job
 from_frontend="job shell $short_id"
@@ -195,11 +195,11 @@ echo
 echo "${blue}from a frontend:$reset"
 echo "$from_frontend"
 echo
-echo "${blue}from your machine (README: SSH to the nodes):$reset"
+echo "${blue}from your machine (docs/ssh.md):$reset"
 if [[ $name == session-* ]]; then
     echo "ssh $host"
     echo
-    echo "${blue}VS Code (README: SSH to the nodes):$reset"
+    echo "${blue}VS Code (docs/ssh.md):$reset"
     printf 'code --remote ssh-remote+%s %q\n' "$host" "$folder"
 else
     echo "ssh -o RemoteCommand='$job shell $short_id' $host"
