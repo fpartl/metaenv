@@ -1,0 +1,65 @@
+#!/bin/bash
+#PBS -N uv-job
+#PBS -m n
+# A PBS job running a command of a uv project at an exact commit, in its own environment synced offline:
+#
+#   qsub -l select=1:ncpus=4:ngpus=1:mem=16gb:scratch_local=20gb -l walltime=4:00:00 \
+#       -v REPO=<path>,COMMIT=<sha>,CMD='<command>'[,OUTPUT=output,OUTPUT_TO=<dir>] \
+#       /…/metaenv/libexec/uv/job
+#
+# 1. clones REPO into the scratch and checks out COMMIT; REPO is best a path on /storage, the nodes read it without
+#    network or keys;
+# 2. syncs the environment of uv.lock into the scratch, `uv sync --frozen --offline`: only from uv's cache in the home,
+#    which `uv sync` of the project (in a session, on a frontend) fills, so no git server is needed; fails at once when
+#    something is not in the cache;
+# 3. runs CMD in the clone with the environment activated;
+# 4. copies OUTPUT (a folder of the clone, `output` by default) into OUTPUT_TO, when given, and cleans the scratch;
+#    when the copying fails, the scratch stays for a manual rescue.
+
+set -euo pipefail
+
+: "${REPO:?missing REPO}" "${COMMIT:?missing COMMIT}" "${CMD:?missing CMD}"
+: "${SCRATCHDIR:?not in a job with a scratch (scratch_local=…)}"
+repo=$SCRATCHDIR/repo
+
+# the home of the frontend (PBS gives the node's own one): uv's cache and Pythons are there; uv where its installer
+# (~/.local/bin) or `pixi global` (~/.pixi/bin) puts it, a batch job does not read ~/.bashrc
+export HOME=${PBS_O_HOME:-$HOME}
+export PATH=$HOME/.local/bin:$HOME/.pixi/bin:$PATH
+# temporary files into the scratch (as tmp-to-scratch), /tmp of the node has a small limit
+export TMPDIR=$SCRATCHDIR/tmp
+mkdir -p "$TMPDIR"
+# the environment on the node's disk; the cache is on another file system, so copies instead of hard links
+export UV_PROJECT_ENVIRONMENT=$SCRATCHDIR/venv UV_LINK_MODE=copy
+
+finish() {
+    local status=$?
+    if [[ -n ${OUTPUT_TO:-} && -d $repo/${OUTPUT:-output} ]]; then
+        if ! { mkdir -p "$OUTPUT_TO" && cp -r "$repo/${OUTPUT:-output}/." "$OUTPUT_TO/"; }; then
+            echo "copying the output to $OUTPUT_TO failed, it stays in $(hostname -f):$SCRATCHDIR" >&2
+            exit 1
+        fi
+        echo "output copied to $OUTPUT_TO"
+    fi
+    clean_scratch
+    exit "$status"
+}
+trap finish EXIT
+
+echo "job ${PBS_JOBID:-?}"
+echo "  node     $(hostname -f)"
+echo "  repo     $REPO"
+echo "  commit   $COMMIT"
+echo "  command  $CMD"
+echo
+git clone --quiet "$REPO" "$repo"
+git -C "$repo" checkout --quiet --detach "$COMMIT"
+cd "$repo"
+if ! uv sync --frozen --offline; then
+    echo "uv sync failed: missing in uv's cache? run \`uv sync\` in the project at this commit (frontend, session)" >&2
+    exit 1
+fi
+# shellcheck source=/dev/null  # made by uv sync above
+source "$UV_PROJECT_ENVIRONMENT/bin/activate"
+echo
+bash -c "$CMD"

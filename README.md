@@ -15,6 +15,7 @@ comment at its top shows how to use it, with examples. `sif` runs anywhere ([`bi
 | `job extend [id] <hours>` | frontend, job | more hours for a running job (`qextend`) |
 | `job kill <id>...` | frontend | ends jobs (`qdel`) after showing which ones and a confirmation |
 | `job log out\|err <id>`, `wjo`, `wje` | frontend | output / errors of a job: `tail -f` while it runs, else `less` |
+| `job run <command>...` | job | a command of a uv project, its environment in the scratch; `COMMIT`: of a commit |
 | `sif tag [project-dir]` | anywhere | fingerprint of the environment, `sha256(uv.lock + Dockerfile)[:12]` |
 | `sif build [-n NAME] <images>` | your machine | `<images>/<name>-<tag>.sif` from the Dockerfile (Docker + Apptainer) |
 | `sif shell <image.sif> [command...]` | node | a shell or a command in an image, with the GPUs and the job's scratch |
@@ -191,6 +192,33 @@ qsub -l select=1:ncpus=4:mem=16gb:scratch_local=20gb -l walltime=4:00:00 \
 The job clones `REPO` into the scratch, checks out `COMMIT`, picks the image of that commit (fails at once when it
 is missing), runs `CMD` in it at `/app` and copies `OUTPUT` (default `output`) into `OUTPUT_TO`. The scratch is
 cleaned at the end, unless the copying failed. `NAME` overrides the name of the image (default: the repository name).
+
+## uv projects without an image
+
+A project whose dependencies are all Python packages needs no image: uv installs them on the node, PyTorch's CUDA
+wheels bring CUDA along and need only the driver of the node. Develop and debug it in a session (`job session -g 1`,
+VS Code), run it as a job by a job script of the project, which calls its command by `job run` (as `uv run`):
+
+```bash
+#!/bin/bash
+#PBS -l select=1:ncpus=4:ngpus=1:mem=16gb:scratch_local=20gb
+#PBS -l walltime=4:00:00
+#PBS -N train
+# qsub -v COMMIT=$(git rev-parse HEAD),EPOCHS=10 app/train.sh      (in the project)
+
+set -euo pipefail
+: "${EPOCHS:?missing EPOCHS}"
+trap clean_scratch EXIT TERM
+"/storage/plzen1/home/$USER/tools/metaenv/bin/metacentrum/job" run python app/train.py --epochs "$EPOCHS"
+```
+
+`job run` runs the command in the folder qsub was run in, in the environment of `uv.lock` synced into the scratch by
+`uv sync --frozen --offline`. With `COMMIT`, in a clone of that commit in the scratch: changes of the project after
+`qsub` (e.g. while hundreds of jobs wait) do not get into the job. Clone and `--offline` keep the job away from the
+network: no git server, no SSH keys on the node, also dependencies from a git server come from uv's cache in your home.
+A dependency missing in the cache ends the job at once; `uv sync` of the project, on a frontend or in a session, puts it
+there. Without `COMMIT`, e.g. in a session, it runs the working tree. A batch job does not read `~/.bashrc`, hence the
+full path of `job`; results go to a folder on the storage, the scratch is cleaned at the end.
 
 ## Development
 

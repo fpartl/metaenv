@@ -17,6 +17,7 @@ usage: job <command> [arguments]
   extend [id] <hours>     more hours for a running job; \`job extend info\`: what is left of the limit
   kill <id>...            ends jobs, after a confirmation
   log out|err <id>        output / errors of a job (also wjo, wje)
+  run <command>...        a command of a uv project in a job, its environment in the scratch (COMMIT: of a commit)
 EOF
 }
 
@@ -25,7 +26,7 @@ if (( $# == 0 )); then
     exit 0
 fi
 case $1 in
-    session | list | info | shell | extend | kill | log) ;;
+    session | list | info | shell | extend | kill | log | run) ;;
     attach) set -- shell "${@:2}" ;;   # the same as shell, as pbs_attach
     -h | --help | help)
         usage
