@@ -34,7 +34,7 @@ Clone the repository and run the installer, both on your MetaCentrum frontend (e
 
 ```bash
 git clone https://github.com/fpartl/metaenv.git ~/tools/metaenv
-~/tools/metaenv/install.sh
+~/tools/metaenv/setup.sh
 ```
 
 The installer adds a small block to your `~/.bashrc` (a backup is kept) and can be run again at any time; update by
@@ -81,7 +81,7 @@ the comment at its top.
 
 | topic | what you find there |
 |---|---|
-| [Installation](docs/installation.md) | what `install.sh` does, the old metaenv, your machine, Tab completion |
+| [Installation](docs/installation.md) | what `setup.sh` does, the old metaenv, your machine, Tab completion |
 | [Sessions](docs/sessions.md) | `job session`, `job shell` inside a job, temporary files in the scratch |
 | [SSH](docs/ssh.md) | `ssh <node>` and VS Code from your machine into your job, git and ssh on the nodes |
 | [Job scripts of uv projects](docs/job_scripts.md) | a job at an exact commit by plain `qsub`, a script to copy |

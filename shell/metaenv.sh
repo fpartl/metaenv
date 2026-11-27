@@ -1,5 +1,5 @@
 # shellcheck shell=bash
-# metaenv: sourced by ~/.bashrc (see install.sh). Shells without a terminal (scp, rsync, `ssh <frontend> job session …`)
+# metaenv: sourced by ~/.bashrc (see setup.sh). Shells without a terminal (scp, rsync, `ssh <frontend> job session …`)
 # read it too, so it must never print anything. A PBS job starts in the node's own home, without it: a job script that
 # wants it sources this file by its full path.
 

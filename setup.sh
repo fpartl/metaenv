@@ -1,8 +1,8 @@
 #!/bin/bash
 # Put metaenv into ~/.bashrc of this machine's home (on MetaCentrum: the home of the frontend), or into the given file:
 #
-#   ./install.sh                    # ~/.bashrc
-#   ./install.sh <path>/.bashrc
+#   ./setup.sh                      # ~/.bashrc
+#   ./setup.sh <path>/.bashrc
 #
 # The same on MetaCentrum and on your machine: shell/metaenv.sh itself puts bin/metacentrum/ on PATH only on
 # MetaCentrum.
@@ -15,7 +15,7 @@
 set -euo pipefail
 
 if (( $# > 1 )); then
-    echo "usage: install.sh [bashrc]" >&2
+    echo "usage: setup.sh [bashrc]" >&2
     exit 2
 fi
 file=${1:-$HOME/.bashrc}
@@ -27,7 +27,7 @@ if [[ -f $file ]]; then
     ends=$(grep -c '^# <<< metaenv <<<$' "$file" || true)
     old=$(grep -c '^#\( #\)\? metaenv stuff' "$file" || true)   # the old block starts and ends with this line
     if (( starts != ends || old % 2 )); then
-        echo "install.sh: a metaenv block in $file lacks its start or end line, fix it by hand first" >&2
+        echo "setup.sh: a metaenv block in $file lacks its start or end line, fix it by hand first" >&2
         exit 1
     fi
 fi

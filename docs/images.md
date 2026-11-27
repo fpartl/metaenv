@@ -33,3 +33,7 @@ is missing), runs `CMD` in it at `/app` and copies `OUTPUT` (default `output`) i
 cleaned at the end, unless the copying failed. `NAME` overrides the name of the image (default: the repository name).
 Relative paths in `REPO`, `IMAGES` and `OUTPUT_TO` are from the folder `qsub` was run in, so from the root of the
 project `REPO=.` is enough.
+
+A path is the safer `REPO`. A git URL over SSH needs the keys on the node, and a batch job reads `~/.ssh` of the
+node's own home, which links to that of the frontend only after `job shell` has run on that storage
+([SSH on the nodes](ssh.md#ssh-on-the-nodes)); without it the clone fails at once.
