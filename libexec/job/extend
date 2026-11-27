@@ -30,5 +30,7 @@ fi
 # job info is next to this script
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
-qextend "$id" "$hours:00:00"
-"$here/info" "$id"
+# qextend wants the full id (with the server), job list and job info -c show the short one; an unknown job fails here
+full_id=$("$here/info" "$id" id)
+qextend "$full_id" "$hours:00:00"
+"$here/info" "$full_id"
