@@ -1,0 +1,36 @@
+#!/bin/bash
+# Extends the walltime of a running PBS job by whole hours (qextend of MetaCentrum, which limits how much you extend in
+# 30 days) and shows the job with its new end (job info); `info` shows what is left of the limit. Without an id, the job
+# you are in (PBS_JOBID: a batch job, the shell of job shell).
+#
+#   job extend 8              # the job you are in, 8 more hours
+#   job extend 1234567 8
+#   job extend info
+
+set -euo pipefail
+
+if [[ ${1:-} == info && $# == 1 ]]; then
+    exec qextend info
+fi
+case $# in
+    1) id=${PBS_JOBID:-} hours=$1 ;;
+    2) id=$1 hours=$2 ;;
+    *) id="" hours="" ;;
+esac
+# hours of up to 4 digits: a single longer number or one with a dot is a job id without the hours, not the hours
+if (( $# == 1 )) && [[ $1 =~ ^[0-9]{5,}$ || $1 == *.* ]]; then
+    echo "job extend: $1 looks like a job id, how many hours? job extend $1 <hours>" >&2
+    exit 2
+fi
+if [[ -z $id || ! $hours =~ ^[1-9][0-9]{0,3}$ ]]; then
+    echo "usage: job extend [job-id] <hours> (without an id only in a job) | job extend info" >&2
+    exit 2
+fi
+
+# job info is next to this script
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
+# qextend wants the full id (with the server), job list and job info -c show the short one; an unknown job fails here
+full_id=$("$here/info" "$id" id)
+qextend "$full_id" "$hours:00:00"
+"$here/info" "$full_id"

@@ -1,0 +1,15 @@
+# Not a Python package: only the development tools, so that `uv sync` (run by .githooks/init.sh) installs pre-commit
+[project]
+name = "metaenv"
+version = "0"
+requires-python = ">=3.12"
+dependencies = []
+
+# development dependencies, installed by `uv sync`
+[dependency-groups]
+dev = [
+    "pre-commit", # shellcheck and other checks before commit (.pre-commit-config.yaml)
+]
+
+[tool.uv]
+package = false

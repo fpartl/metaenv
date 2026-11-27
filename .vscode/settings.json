@@ -1,0 +1,39 @@
+{
+    "files.exclude": {
+        ".venv" : true,
+        ".githooks": true,
+        "uv.lock": true,
+
+        // ! UNHIDE THESE WHEN NEEDED
+        ".pre-commit-config.yaml": true,
+    },
+    "cSpell.words": [
+        "Apptainer",
+        "CACHEDIR",
+        "cesnet",
+        "cpus",
+        "cuni",
+        "GSSAPI",
+        "JOBID",
+        "kinit",
+        "konos",
+        "libexec",
+        "lstrip",
+        "metacentrum",
+        "METAENV",
+        "muni",
+        "ncpus",
+        "ngpus",
+        "pipefail",
+        "qdel",
+        "qstat",
+        "qsub",
+        "removeprefix",
+        "rstrip",
+        "SCRATCHDIR",
+        "shellcheck",
+        "startswith",
+        "venv",
+        "walltime"
+    ]
+}

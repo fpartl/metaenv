@@ -1,0 +1,28 @@
+#!/bin/bash
+# Ends PBS jobs (qdel): shows which ones (name, state, node) and ends them only after a confirmation.
+#
+#   job kill 1234567
+#   job kill 1234567 1234568
+
+set -euo pipefail
+
+if (( $# == 0 )); then
+    echo "usage: job kill <job-id>..." >&2
+    exit 2
+fi
+
+# job info is next to this script
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
+for id in "$@"; do
+    # not $(…), it drops the empty lines of missing attributes; a failure of job info (unknown job) gives no lines
+    mapfile -t f < <("$here/info" "$id" Job_Name job_state exec_host2)
+    if (( ${#f[@]} != 3 )); then
+        exit 1
+    fi
+    host=${f[2]%%[:+]*}
+    echo "$id  ${f[0]}  ${f[1]}  ${host:--}"
+done
+read -r -p "end? [y/N] " answer
+[[ $answer =~ ^[YyAa]$ ]] || exit 1
+qdel "$@"

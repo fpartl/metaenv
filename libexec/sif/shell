@@ -1,0 +1,27 @@
+#!/bin/bash
+# A shell (or a command) in a Singularity image, with the GPUs of the node and the job's scratch:
+#
+#   sif shell myproject-3f9a1c2b7d04.sif
+#   sif shell myproject-3f9a1c2b7d04.sif python -c 'import torch; print(torch.cuda.is_available())'
+
+set -euo pipefail
+
+if (( $# < 1 )) || [[ ! -f $1 ]]; then
+    echo "usage: sif shell <image.sif> [command...]" >&2
+    exit 2
+fi
+image=$1
+shift
+
+options=()
+if nvidia-smi -L &> /dev/null; then
+    options+=(--nv)
+fi
+if [[ -n ${SCRATCHDIR:-} ]]; then
+    options+=(-B "$SCRATCHDIR")
+fi
+
+if (( $# )); then
+    exec singularity exec "${options[@]}" "$image" "$@"
+fi
+exec singularity shell "${options[@]}" "$image"

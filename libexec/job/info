@@ -1,0 +1,221 @@
+#!/bin/bash
+# A PBS job (also a finished one): an overview; with -c also the commands to connect to it while it runs (as job session
+# prints them), with -e how much of its CPUs and memory it uses (PBS), -ee also of its scratch and GPUs (measured on its
+# node, slower), -v all of these. Or the given attributes one per line in their order (an empty line when missing).
+# Without an id, the job you are in (PBS_JOBID: a batch job, job shell).
+#
+#   job info                                         # the job you are in
+#   job info -c 1234567                              # its state, resources, time, folders and how to connect
+#   job info -e 1234567                              # how much of the requested CPUs and memory it uses
+#   job info -ee 1234567                             # also of the scratch and GPUs
+#   job info -v 1234567                              # all of it
+#   job info 1234567 job_state exec_host2 Output_Path   # `id` is the full job id; all attributes: qstat -xwf <id>
+
+set -euo pipefail
+
+usage() {
+    echo "usage: job info [-c] [-e|-ee] [-v] [job-id] | job info <job-id> <attribute>..." >&2
+    exit 2
+}
+
+# the options anywhere, also after the id (getopts stops at it); attributes never start with a dash. -e counts: -ee
+# (or -e -e) is level 2.
+connect=0 efficiency=0 args=()
+for arg in "$@"; do
+    if [[ ! $arg =~ ^- ]]; then
+        args+=("$arg")
+    elif [[ $arg =~ ^-[cev]+$ ]]; then
+        if [[ $arg == *c* ]]; then
+            connect=1
+        fi
+        e_only=${arg//[^e]/}
+        efficiency=$(( efficiency + ${#e_only} ))
+        if [[ $arg == *v* ]]; then   # every extra
+            connect=1 efficiency=2
+        fi
+    else
+        usage
+    fi
+done
+set -- "${args[@]}"
+if (( $# == 0 )) && [[ -z ${PBS_JOBID:-} ]] || (( (connect || efficiency) && $# > 1 )); then
+    usage
+fi
+id=${1:-$PBS_JOBID}
+shift || true
+
+# The attributes of the job, one per line. Plain `qstat -f` instead of `-F json`, whose escaping of the job's
+# environment is not always valid JSON. An unknown job or a failure of qstat (its message goes to the terminal) gives
+# no lines and exit status 1, so that the callers' checks of the number of lines catch it.
+attributes() {
+    qstat -x -w -f "$id" | python3 -c '
+import sys
+
+attrs, key = {}, None
+for line in sys.stdin:
+    line = line.rstrip("\n")
+    if line.startswith("Job Id: "):
+        attrs["id"] = line.removeprefix("Job Id: ")
+    elif line.startswith("\t") and key:  # continuation of a long value
+        attrs[key] += line.lstrip("\t")
+    elif " = " in line:
+        key, value = line.strip().split(" = ", 1)
+        attrs[key] = value
+
+if "id" not in attrs:
+    sys.exit(1)
+for name in sys.argv[1:]:
+    print(attrs.get(name, ""))
+' "$@"
+}
+
+if (( $# > 0 )); then
+    attributes "$@"
+    exit
+fi
+
+# not $(…), it drops the empty lines of missing attributes; a failure of qstat (unknown job) gives no lines
+mapfile -t f < <(attributes id Job_Name job_state comment Exit_status exec_host2 Resource_List.select stime \
+    Resource_List.walltime resources_used.walltime Variable_List resources_used.cput resources_used.mem \
+    Resource_List.ncpus Resource_List.mem Resource_List.ngpus)
+if (( ${#f[@]} == 0 )); then
+    exit 1
+fi
+full_id=${f[0]} short_id=${f[0]%%.*} name=${f[1]} state=${f[2]} comment=${f[3]} exit_status=${f[4]}
+host=${f[5]%%[:+]*} select=${f[6]} stime=${f[7]} walltime=${f[8]} used=${f[9]} cput=${f[11]} mem_used=${f[12]}
+ncpus=${f[13]} mem=${f[14]} ngpus=${f[15]:-0}
+# a variable of the job: Variable_List is NAME=value,NAME=value,…
+var() {
+    tr ',' '\n' <<< "${f[10]}" | sed -n "s/^$1=//p"
+}
+scratchdir=$(var SCRATCHDIR) folder=$(var PBS_O_WORKDIR)
+
+# colors only in a terminal, and not with NO_COLOR set (no-color.org)
+blue="" green="" yellow="" red="" reset=""
+if [[ -t 1 && -z ${NO_COLOR:-} ]]; then
+    blue=$'\e[94m' green=$'\e[32m' yellow=$'\e[33m' red=$'\e[31m' reset=$'\e[0m'
+fi
+
+# PBS's comment repeats the node, resources and start of a running job; it tells why one waits or how it ended
+state_color=""
+case $state in
+    R) state=running comment="" state_color=$green ;;
+    Q) state=queued state_color=$yellow ;;
+    H) state=held state_color=$yellow ;;
+    W) state=waiting state_color=$yellow ;;
+    F)
+        state="finished${exit_status:+, exit status $exit_status}"
+        if [[ ${exit_status:-0} != 0 ]]; then
+            state_color=$red
+        fi
+        ;;
+esac
+
+# hh:mm:ss -> seconds
+seconds() {
+    local h m s
+    IFS=: read -r h m s <<< "$1"
+    echo $(( 10#$h * 3600 + 10#$m * 60 + 10#$s ))
+}
+line() {
+    printf '  %-11s %s\n' "$1" "$2"
+}
+
+echo "job $short_id  $name"
+line state "$state_color$state$reset${comment:+ ($comment)}"
+line node "${host:--}"
+line resources "$select"
+line walltime "${used:-00:00:00} of $walltime"
+if [[ -n $stime ]]; then
+    start=$(date -d "$stime" +%s)
+    line started "$(date -d "@$start" '+%Y-%m-%d %H:%M')"
+    if [[ $state == running ]]; then
+        line ends "$(date -d "@$(( start + $(seconds "$walltime") ))" '+%Y-%m-%d %H:%M')"
+    fi
+fi
+line scratch "${scratchdir:--}"
+line folder "$folder"
+
+# a size of PBS (16gb, 3355443kb, ..., without a unit bytes) -> kB
+kilobytes() {
+    local number=${1%%[a-z]*} unit=${1##*[0-9]}
+    case $unit in
+        "" | b) echo $(( number / 1024 )) ;;
+        kb) echo "$number" ;;
+        mb) echo $(( number * 1024 )) ;;
+        gb) echo $(( number * 1024 ** 2 )) ;;
+        tb) echo $(( number * 1024 ** 3 )) ;;
+        *)
+            echo "job info: unknown size $1" >&2
+            exit 1
+            ;;
+    esac
+}
+# The average use of the requested CPUs (CPU time of the job's processes over the time it runs) and the memory used,
+# as PBS measures them in the job's cgroup; nothing before the job runs.
+if (( efficiency )) && [[ -n $used && -n $cput && -n $mem_used ]] && (( $(seconds "$used") > 0 )); then
+    cpu_use=$(( 100 * $(seconds "$cput") / ($(seconds "$used") * ncpus) ))
+    mem_kb=$(kilobytes "$mem_used")
+    mem_use=$(( 100 * mem_kb / $(kilobytes "$mem") ))
+    mem_gb=$(awk -v kb="$mem_kb" 'BEGIN { printf "%.1f", kb / 1024 / 1024 }')
+    echo
+    line "cpu use" "$cpu_use% of $ncpus CPUs (CPU time $cput)"
+    line "mem use" "$mem_use% of $mem ($mem_gb gb)"
+fi
+
+# The scratch and the GPUs are not in PBS: measured on the job's node inside the job (pbs_attach, so nvidia-smi sees
+# only the job's GPUs), from elsewhere over ssh; du of a large scratch takes a while.
+if (( efficiency >= 2 )) && [[ $state == running ]]; then
+    # shellcheck disable=SC2016  # a script for sh -c, its $1 and $2 expand there
+    measure='du -sh "$1" | cut -f1
+if [ "$2" -gt 0 ]; then
+    nvidia-smi --query-gpu=index,utilization.gpu,memory.used,memory.total --format=csv,noheader,nounits
+fi'
+    command=(pbs_attach -j "$full_id" sh -c "$measure" measure "$scratchdir" "$ngpus")
+    if [[ $host == "$(hostname -f)" ]]; then
+        mapfile -t measured < <("${command[@]}")
+    else
+        printf -v remote '%q ' "${command[@]}"
+        # shellcheck disable=SC2029  # quoted by printf %q here, so the node gets the command as it is
+        mapfile -t measured < <(ssh "$host" "$remote")
+    fi
+    line "scratch use" "${measured[0]:-?}"
+    for gpu in "${measured[@]:1}"; do
+        IFS=', ' read -r index utilization memory_used memory_total <<< "$gpu"
+        line "gpu $index use" "$utilization%, memory $memory_used of $memory_total MiB"
+    done
+fi
+
+if (( ! connect )) || [[ $state != running ]]; then
+    exit 0
+fi
+
+# An SSH login to the node lands outside the job, in the node's own home; job shell moves the shell into the job
+# (pbs_attach: its CPUs and memory), with the home metaenv is installed in, the scratch and the folder. From your
+# machine `ssh <node>` runs it by RemoteCommand in ~/.ssh/config (docs/ssh.md), and so does VS Code, but
+# without an id only for a session (job session); a batch job needs its id.
+job=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../bin/metacentrum" && pwd)/job
+from_frontend="job shell $short_id"
+# the commands without indentation and on lines of their own, without colors, so that a triple click selects exactly
+# one of them; the headings in color
+echo
+echo "${blue}from a frontend:$reset"
+echo "$from_frontend"
+echo
+echo "${blue}from your machine (docs/ssh.md):$reset"
+if [[ $name == session-* ]]; then
+    echo "ssh $host"
+    echo
+    echo "${blue}VS Code (docs/ssh.md):$reset"
+    printf 'code --remote ssh-remote+%s %q\n' "$host" "$folder"
+else
+    echo "ssh -o RemoteCommand='$job shell $short_id' $host"
+fi
+cat <<EOF
+
+${blue}extend it:$reset
+job extend $short_id <hours>
+
+${blue}end it:$reset
+job kill $short_id
+EOF

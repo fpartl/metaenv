@@ -1,0 +1,3 @@
+#!/bin/bash
+# Output of a PBS job, see `job log`.
+exec "$(dirname "${BASH_SOURCE[0]}")/job" log out "$@"

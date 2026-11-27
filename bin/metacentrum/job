@@ -1,0 +1,41 @@
+#!/bin/bash
+# MetaCentrum jobs: `job <command> [arguments]`. Each command is a script in libexec/job/, the comment at its top shows
+# how to use it. Without a command, the list of them.
+#
+#   job session -g 1
+#   job info -c
+
+set -euo pipefail
+
+usage() {
+    cat <<EOF
+usage: job <command> [arguments]
+  session [options]       a session on a node: a job holding resources, prints how to connect (-h: options)
+  list [-x]               your jobs: state, name, node, time, folder; -x also finished ones
+  info [-c|-e|-v] [id]    a job: -c how to connect, -e use (-ee scratch, GPUs), -v all; no id: the job you are in
+  shell [id]              a shell inside your job (the RemoteCommand of the nodes); also \`job attach\`
+  extend [id] <hours>     more hours for a running job; \`job extend info\`: what is left of the limit
+  kill <id>...            ends jobs, after a confirmation
+  log out|err <id>        output / errors of a job (also wjo, wje)
+EOF
+}
+
+if (( $# == 0 )); then
+    usage
+    exit 0
+fi
+case $1 in
+    session | list | info | shell | extend | kill | log) ;;
+    attach) set -- shell "${@:2}" ;;   # the same as shell, as pbs_attach
+    -h | --help | help)
+        usage
+        exit 0
+        ;;
+    *)
+        echo "job: unknown command $1" >&2
+        usage >&2
+        exit 2
+        ;;
+esac
+libexec=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../libexec/job" && pwd)
+exec "$libexec/$1" "${@:2}"

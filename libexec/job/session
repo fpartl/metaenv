@@ -1,0 +1,106 @@
+#!/bin/bash
+# A session on a MetaCentrum node: a batch job that only holds the resources, so you connect to it by SSH or VS Code
+# as many times as you like, and a dropped connection (VPN, sleep) does not end it. Ends with its walltime or
+# `job kill`. Prints the final qsub command and submits it only after a confirmation.
+#
+#   job session                  # 2 CPUs, 16 GB RAM, 32 GB scratch, no GPU, 8 hours
+#   job session -g 1 -m 32       # with a GPU (the default queue routes it to the GPU queues)
+#   job session -w 48 -l cluster=konos
+
+set -euo pipefail
+
+# job info is next to this script
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
+usage() {
+    cat >&2 <<EOF
+usage: job session [options]
+  -c CPUS             CPUs (2)
+  -g GPUS             GPUs (0)
+  -l RESOURCE=VALUE   extra resource of the node, repeatable (e.g. cluster=konos, city=plzen)
+  -m MEM_GB           memory in GB (16)
+  -q QUEUE            queue (default: routed by the resources)
+  -s SCRATCH_GB       local scratch in GB (32)
+  -w HOURS            walltime in hours (8)
+EOF
+    exit 2
+}
+
+cpus=2 gpus=0 extra="" mem=16 queue=() scratch=32 hours=8
+while getopts "c:g:hl:m:q:s:w:" opt; do
+    case $opt in
+        c) cpus=$OPTARG ;;
+        g) gpus=$OPTARG ;;
+        l) extra+=":$OPTARG" ;;
+        m) mem=$OPTARG ;;
+        q) queue=(-q "$OPTARG") ;;
+        s) scratch=$OPTARG ;;
+        w) hours=$OPTARG ;;
+        *) usage ;;
+    esac
+done
+(( OPTIND > $# )) || usage
+# whole numbers, only the GPUs may be 0 (qsub would refuse the rest after the confirmation)
+for number in "$cpus" "$mem" "$scratch" "$hours"; do
+    [[ $number =~ ^[1-9][0-9]*$ ]] || usage
+done
+[[ $gpus =~ ^[0-9]+$ ]] || usage
+
+select="select=1:ncpus=$cpus:ngpus=$gpus:mem=${mem}gb:scratch_local=${scratch}gb$extra"
+# named after the project (the repository, or the folder outside one) so that qstat shows which session is which; PBS
+# wants a name starting with a letter and without special characters
+project=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)")
+name=session-${project//[^A-Za-z0-9_.-]/_}
+submit=(qsub -N "$name" -m n -j oe -o /dev/null "${queue[@]}" -l "$select" -l "walltime=$hours:00:00"
+    -- /bin/sleep infinity)
+# the exact command, to check the resources before they are requested
+printf -v shown "%q " "${submit[@]}"
+echo "${shown% }"
+read -r -p "submit? [y/N] " answer
+[[ $answer =~ ^[YyAa]$ ]] || exit 1
+id=$("${submit[@]}")
+echo "job $id submitted, waiting until it runs (Ctrl+C stops waiting, not the job)"
+# on EXIT, not only on Ctrl+C: also a failing qstat ends the waiting (set -e) and leaves the job queued
+waiting=1
+on_exit() {
+    if (( waiting )); then
+        echo "the job stays queued, end it with: job kill $id" >&2
+    fi
+}
+trap on_exit EXIT
+trap 'echo >&2; exit 130' INT
+
+last=""
+while true; do
+    # not $(…), it drops the empty lines of missing attributes at the end; a failure of job info (qstat) gives no lines
+    mapfile -t f < <("$here/info" "$id" job_state comment)
+    if (( ${#f[@]} != 2 )); then
+        exit 1
+    fi
+    state=${f[0]} comment=${f[1]}
+    if [[ $state == R ]]; then
+        waiting=0
+        break
+    fi
+    if [[ $state == F ]]; then
+        waiting=0
+        echo "the job ended without running: $comment" >&2
+        exit 1
+    fi
+    case $state in
+        Q) status=queued ;;
+        H) status=held ;;
+        W) status=waiting ;;
+        *) status="state $state" ;;
+    esac
+    status+=${comment:+": $comment"}
+    if [[ $status != "$last" ]]; then
+        echo "  $(date +%H:%M) $status"
+        last=$status
+    fi
+    sleep 10
+done
+
+# the job and how to connect to it; `job info -c <id>` prints it again (e.g. after this terminal is closed)
+echo
+exec "$here/info" -c "$id"

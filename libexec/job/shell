@@ -1,0 +1,119 @@
+#!/bin/bash
+# Your shell on a MetaCentrum node inside your job running there (pbs_attach): with the CPUs and memory of the job, the
+# home metaenv is installed in, the job's scratch, starting in the folder the job was submitted from (job session: the
+# project). Meant as the RemoteCommand of the nodes in ~/.ssh/config (docs/ssh.md), so that `ssh <node>`
+# and VS Code (Remote - SSH) land in the job. Without an id it takes your session (job session, named session-*) on the
+# node; batch jobs only by their id. Refuses without a session on the node, work on a node belongs to a job; with more
+# of them it asks which one in a terminal, and refuses without one (VS Code) rather than to guess.
+#
+#   job shell               # your session on this node
+#   job shell <job-id>      # also from a frontend: connects to the job's node first
+
+set -euo pipefail
+
+if (( $# > 1 )); then
+    echo "usage: job shell [job-id]" >&2
+    exit 2
+fi
+
+# runs in the node's own home without metaenv (RemoteCommand by the full path): job info is next to this script, and
+# the messages show `job` by its full path too
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+job_cmd=$(cd "$here/../../bin/metacentrum" && pwd)/job
+
+host=$(hostname -f)
+id=${1:-}
+if [[ -z $id ]]; then
+    # my running sessions (job session) on this node, each with its name and folder to tell them apart
+    ids=() labels=()
+    for job in $(qselect -u "$USER" -s R); do
+        mapfile -t f < <("$here/info" "$job" exec_host2 Job_Name Variable_List)
+        if (( ${#f[@]} != 3 )); then   # ended since qselect
+            continue
+        fi
+        if [[ ${f[0]%%[:+]*} == "$host" && ${f[1]} == session-* ]]; then
+            workdir=$(tr ',' '\n' <<< "${f[2]}" | sed -n 's/^PBS_O_WORKDIR=//p')
+            ids+=("$job")
+            labels+=("$job  ${f[1]}  $workdir")
+        fi
+    done
+
+    if (( ${#ids[@]} == 0 )); then
+        {
+            echo "job shell: no running session of yours on $host, work on a node belongs to a job (job session)"
+            echo "into a batch job: ssh -o RemoteCommand='$job_cmd shell <job-id>' $host"
+            echo "to reach the node itself (e.g. the scratch of a failed job): ssh -o RemoteCommand=none $host"
+        } >&2
+        exit 1
+    elif (( ${#ids[@]} == 1 )); then
+        id=${ids[0]}
+    elif [[ -t 0 ]]; then
+        echo "job shell: more of your sessions run on $host, which one?" >&2
+        PS3="job: "
+        select label in "${labels[@]}"; do
+            if [[ -n $label ]]; then
+                id=${ids[REPLY - 1]}
+                break
+            fi
+        done
+        [[ -n $id ]] || exit 1   # end of input (Ctrl+D)
+    else
+        {
+            echo "job shell: more of your sessions run on $host and there is no terminal to ask which one:"
+            printf '  %s\n' "${labels[@]}"
+            echo "end the ones you do not need (job kill), or choose one:"
+            echo "ssh -o RemoteCommand='$job_cmd shell <job-id>' $host"
+        } >&2
+        exit 1
+    fi
+fi
+
+# the full id (with the server): pbs_attach does not find a job by the short one; an unknown job gives no lines
+mapfile -t f < <("$here/info" "$id" id exec_host2 Variable_List)
+if (( ${#f[@]} != 3 )); then
+    exit 1
+fi
+id=${f[0]} job_host=${f[1]%%[:+]*}
+if [[ -z $job_host ]]; then
+    echo "job shell: job ${id%%.*} does not run (job info ${id%%.*})" >&2
+    exit 1
+fi
+# elsewhere (a frontend, another node): on to the job's node, pbs_attach is only there
+if [[ $job_host != "$host" ]]; then
+    exec ssh -t "$job_host" "$job_cmd" shell "$id"
+fi
+# a variable of the job: Variable_List is NAME=value,NAME=value,…
+var() {
+    tr ',' '\n' <<< "${f[2]}" | sed -n "s/^$1=//p"
+}
+home=$(var PBS_O_HOME) workdir=$(var PBS_O_WORKDIR)
+SCRATCHDIR=$(var SCRATCHDIR)
+export HOME=${home:-$HOME} SCRATCHDIR PBS_JOBID=$id   # PBS_JOBID as in a batch job (job info without an id)
+# ssh (also of scp, rsync, git) reads ~/.ssh of the home in passwd, the node's own one, not of HOME: that one links to
+# ~/.ssh of HOME, so all of them use the keys, config and known_hosts of the frontend (docs/ssh.md). Made
+# here when missing; an existing ~/.ssh there stays, it may hold something.
+node_home=$(getent passwd "$USER" | cut -d: -f6)
+if [[ -n $node_home && $node_home != "$HOME" && -d $HOME/.ssh ]]; then
+    if [[ ! -e $node_home/.ssh && ! -L $node_home/.ssh ]]; then
+        if ln -s "$HOME/.ssh" "$node_home/.ssh"; then
+            echo "job shell: $node_home/.ssh links to $HOME/.ssh now (docs/ssh.md)" >&2
+        fi
+    elif [[ $(readlink -f "$node_home/.ssh") != "$(readlink -f "$HOME/.ssh")" ]]; then
+        {
+            echo "job shell: ssh here uses $node_home/.ssh, not $HOME/.ssh; check what it holds, then replace it:"
+            echo "mv $node_home/.ssh $node_home/.ssh.old && ln -s $HOME/.ssh $node_home/.ssh"
+        } >&2
+    fi
+fi
+cd "${workdir:-$HOME}"
+echo "job shell: job $id" >&2
+status=0
+pbs_attach -j "$id" bash -l || status=$?
+# leaving the shell does not end the job: a reminder, while it still runs (its walltime may have ended it)
+mapfile -t f < <("$here/info" "$id" job_state Job_Name)
+if [[ ${f[0]:-} == R ]]; then
+    short_id=${id%%.*}
+    echo "job shell: job $short_id (${f[1]}) still runs and holds its resources; end it on a frontend:" >&2
+    echo "job kill $short_id" >&2
+fi
+exit "$status"

@@ -1,0 +1,11 @@
+#!/bin/bash
+# The fingerprint of a project's environment: the first 12 hex digits of sha256 of `uv.lock` followed by `Dockerfile`.
+# An image is named `<project>-<fingerprint>.sif`, so any change of the dependencies means another image.
+# The formula is the contract, libexec/sif/job repeats it (a PBS job does not see metaenv on its PATH).
+#
+#   sif tag [project-dir]     # 3f9a1c2b7d04
+
+set -euo pipefail
+
+project=${1:-.}
+cat "$project/uv.lock" "$project/Dockerfile" | sha256sum | cut -c1-12
