@@ -12,7 +12,7 @@ fi
 stream=$1
 
 # not $(…), it drops the empty lines of missing attributes at the end (Exit_status of a running job); a failure of
-# job info gives fewer lines
+# job info (unknown job) gives no lines
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 mapfile -t f < <("$here/info" "$2" id job_state exec_host2 Output_Path Error_Path Join_Path Exit_status)
 if (( ${#f[@]} != 7 )); then

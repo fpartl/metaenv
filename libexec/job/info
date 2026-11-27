@@ -45,7 +45,8 @@ id=${1:-$PBS_JOBID}
 shift || true
 
 # The attributes of the job, one per line. Plain `qstat -f` instead of `-F json`, whose escaping of the job's
-# environment is not always valid JSON.
+# environment is not always valid JSON. An unknown job or a failure of qstat (its message goes to the terminal) gives
+# no lines and exit status 1, so that the callers' checks of the number of lines catch it.
 attributes() {
     qstat -x -w -f "$id" | python3 -c '
 import sys
@@ -61,6 +62,8 @@ for line in sys.stdin:
         key, value = line.strip().split(" = ", 1)
         attrs[key] = value
 
+if "id" not in attrs:
+    sys.exit(1)
 for name in sys.argv[1:]:
     print(attrs.get(name, ""))
 ' "$@"
@@ -71,12 +74,11 @@ if (( $# > 0 )); then
     exit
 fi
 
-# not $(…), it drops the empty lines of missing attributes; a failure of qstat (unknown job, its message goes to the
-# terminal) leaves no id
+# not $(…), it drops the empty lines of missing attributes; a failure of qstat (unknown job) gives no lines
 mapfile -t f < <(attributes id Job_Name job_state comment Exit_status exec_host2 Resource_List.select stime \
     Resource_List.walltime resources_used.walltime Variable_List resources_used.cput resources_used.mem \
     Resource_List.ncpus Resource_List.mem Resource_List.ngpus)
-if [[ -z ${f[0]} ]]; then
+if (( ${#f[@]} == 0 )); then
     exit 1
 fi
 full_id=${f[0]} short_id=${f[0]%%.*} name=${f[1]} state=${f[2]} comment=${f[3]} exit_status=${f[4]}

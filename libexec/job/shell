@@ -28,6 +28,9 @@ if [[ -z $id ]]; then
     ids=() labels=()
     for job in $(qselect -u "$USER" -s R); do
         mapfile -t f < <("$here/info" "$job" exec_host2 Job_Name Variable_List)
+        if (( ${#f[@]} != 3 )); then   # ended since qselect
+            continue
+        fi
         if [[ ${f[0]%%[:+]*} == "$host" && ${f[1]} == session-* ]]; then
             workdir=$(grep -o 'PBS_O_WORKDIR=[^,]*' <<< "${f[2]}" | cut -d= -f2 || true)
             ids+=("$job")
@@ -65,9 +68,9 @@ if [[ -z $id ]]; then
     fi
 fi
 
-# the full id (with the server): pbs_attach does not find a job by the short one; an unknown job leaves none
+# the full id (with the server): pbs_attach does not find a job by the short one; an unknown job gives no lines
 mapfile -t f < <("$here/info" "$id" id exec_host2 Variable_List)
-if [[ -z ${f[0]} ]]; then
+if (( ${#f[@]} != 3 )); then
     exit 1
 fi
 id=${f[0]} job_host=${f[1]%%[:+]*}

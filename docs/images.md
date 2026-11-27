@@ -31,3 +31,5 @@ qsub -l select=1:ncpus=4:mem=16gb:scratch_local=20gb -l walltime=4:00:00 \
 The job clones `REPO` into the scratch, checks out `COMMIT`, picks the image of that commit (fails at once when it
 is missing), runs `CMD` in it at `/app` and copies `OUTPUT` (default `output`) into `OUTPUT_TO`. The scratch is
 cleaned at the end, unless the copying failed. `NAME` overrides the name of the image (default: the repository name).
+Relative paths in `REPO`, `IMAGES` and `OUTPUT_TO` are from the folder `qsub` was run in, so from the root of the
+project `REPO=.` is enough.

@@ -17,7 +17,12 @@ case $# in
     2) id=$1 hours=$2 ;;
     *) id="" hours="" ;;
 esac
-if [[ -z $id || ! $hours =~ ^[1-9][0-9]*$ ]]; then
+# hours of up to 4 digits: a single longer number or one with a dot is a job id without the hours, not the hours
+if (( $# == 1 )) && [[ $1 =~ ^[0-9]{5,}$ || $1 == *.* ]]; then
+    echo "job extend: $1 looks like a job id, how many hours? job extend $1 <hours>" >&2
+    exit 2
+fi
+if [[ -z $id || ! $hours =~ ^[1-9][0-9]{0,3}$ ]]; then
     echo "usage: job extend [job-id] <hours> (without an id only in a job) | job extend info" >&2
     exit 2
 fi

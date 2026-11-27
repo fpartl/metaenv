@@ -11,6 +11,12 @@ git clone https://github.com/fpartl/metaenv.git ~/tools/metaenv
 `install.sh` puts a block (`# >>> metaenv >>>`) at the top of `~/.bashrc`, before any part for interactive shells
 only, so the tools are on `PATH` also in `ssh <frontend> job session …`. Running it again replaces the block (and
 removes the block of the old metaenv); the previous file is kept as `.bashrc.metaenv.bak`. Update by `git pull`.
+A symlinked `~/.bashrc` (dotfiles in a repository) stays a symlink, the block goes into its target.
+
+A login shell (`ssh <frontend>`, and `job shell` on a node, also under VS Code) reads `~/.bash_profile`,
+`~/.bash_login` or `~/.profile`, the first of them that exists, not `~/.bashrc`. When there is none, `install.sh`
+creates `~/.bash_profile` that sources `~/.bashrc`; when the existing one does not mention `~/.bashrc`, it warns and
+leaves the file to you.
 
 **From the old metaenv** (`src/*.sh`, the block `# metaenv stuff`): run `install.sh` right after the `git pull` (or
 checkout). Until then the old block sources files that no longer exist and every shell prints errors, also `scp`.

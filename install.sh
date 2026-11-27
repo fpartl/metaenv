@@ -9,6 +9,8 @@
 # Only this one home: `job session` connects to a node with this HOME, whichever storage the node's own home is on.
 # The block goes to the top of the file, before any "interactive shells only" part, so the tools are on PATH also
 # for `ssh <frontend> job session …`. Running it again replaces the block, the previous file is kept as `*.metaenv.bak`.
+# A login shell reads ~/.bash_profile (or ~/.bash_login, ~/.profile) instead: one sourcing ~/.bashrc is made when
+# there is none.
 
 set -euo pipefail
 
@@ -19,7 +21,8 @@ fi
 file=${1:-$HOME/.bashrc}
 dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
-tmp=$(mktemp "$file.XXXXXX")
+tmp=$(mktemp)
+trap 'rm -f "$tmp"' EXIT
 {
     echo "# >>> metaenv >>>"
     printf 'source %q\n' "$dir/shell/metaenv.sh"
@@ -31,11 +34,33 @@ tmp=$(mktemp "$file.XXXXXX")
     fi
 } > "$tmp"
 
+# written into the file, not moved over it: a symlink (dotfiles in a repository) stays and its target gets the block
 if [[ -f $file ]]; then
-    chmod --reference="$file" "$tmp"
     cp -p "$file" "$file.metaenv.bak"
-else
-    chmod 644 "$tmp"
 fi
-mv "$tmp" "$file"
+cat "$tmp" > "$file"
 echo "updated $file"
+
+# A login shell (ssh to the frontend, job shell on a node) reads the first of these files that exists, not ~/.bashrc
+# (man bash, INVOCATION); the usual one sources ~/.bashrc. Without any of them, one that does; one that does not
+# source it is up to you.
+home=$(dirname "$file")
+for profile in "$home/.bash_profile" "$home/.bash_login" "$home/.profile" ""; do
+    if [[ -z $profile || -e $profile ]]; then
+        break
+    fi
+done
+if [[ -z $profile ]]; then
+    cat > "$home/.bash_profile" <<'PROFILE'
+# login shells (ssh, job shell of metaenv) read this file, not ~/.bashrc
+if [[ -f ~/.bashrc ]]; then
+    source ~/.bashrc
+fi
+PROFILE
+    echo "created $home/.bash_profile, it sources ~/.bashrc"
+elif ! grep -q '\.bashrc' "$profile"; then
+    {
+        echo "warning: $profile does not seem to source ~/.bashrc, so login shells (ssh, job shell) miss metaenv;"
+        echo "add to it: if [[ -f ~/.bashrc ]]; then source ~/.bashrc; fi"
+    } >&2
+fi

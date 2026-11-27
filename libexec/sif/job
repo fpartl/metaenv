@@ -13,12 +13,17 @@
 # 3. runs CMD in the image, with the clone at /app (the image keeps its environment outside /app, e.g. /opt/venv);
 # 4. copies OUTPUT (a folder of the clone, `output` by default) into OUTPUT_TO, when given, and cleans the scratch;
 #    when the copying fails, the scratch stays for a manual rescue.
+#
+# Relative paths (REPO, IMAGES, OUTPUT_TO) are from the folder qsub was run in.
 
 set -euo pipefail
 
 : "${REPO:?missing REPO}" "${COMMIT:?missing COMMIT}" "${IMAGES:?missing IMAGES}" "${CMD:?missing CMD}"
 : "${SCRATCHDIR:?not in a job with a scratch (scratch_local=…)}"
 repo=$SCRATCHDIR/repo
+
+# a PBS job starts in the node's own home, not where qsub was run
+cd "${PBS_O_WORKDIR:-.}"
 
 # temporary files into the scratch (as tmp-to-scratch), /tmp of the node has a small limit; the image gets TMPDIR too,
 # Singularity passes the environment and the scratch is bound
@@ -46,7 +51,12 @@ echo "  commit   $COMMIT"
 git clone --quiet "$REPO" "$repo"
 git -C "$repo" checkout --quiet --detach "$COMMIT"
 
-name=${NAME:-$(basename "$REPO" .git)}
+# the name of the repository; of a local one by its folder, also for REPO=.
+if [[ -d $REPO ]]; then
+    name=${NAME:-$(basename "$(cd "$REPO" && pwd)" .git)}
+else
+    name=${NAME:-$(basename "$REPO" .git)}
+fi
 tag=$(cat "$repo/uv.lock" "$repo/Dockerfile" | sha256sum | cut -c1-12)   # the same as sif tag
 image="$IMAGES/${name,,}-$tag.sif"
 if [[ ! -f $image ]]; then

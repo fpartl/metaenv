@@ -70,7 +70,7 @@ trap 'echo >&2; exit 130' INT
 
 last=""
 while true; do
-    # not $(…), it drops the empty lines of missing attributes at the end; a failure of job info gives fewer lines
+    # not $(…), it drops the empty lines of missing attributes at the end; a failure of job info (qstat) gives no lines
     mapfile -t f < <("$here/info" "$id" job_state comment)
     if (( ${#f[@]} != 2 )); then
         exit 1
