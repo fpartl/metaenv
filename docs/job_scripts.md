@@ -25,4 +25,7 @@ What the script does and why:
 - `UV_OFFLINE`: no git server, no SSH keys on the node; dependencies from a git server come from uv's cache too. A
   dependency missing in the cache ends the job at once, before the work; `uv sync` of the project at that commit, on
   a frontend or in a session, puts it there.
+- The data of a project with DVC: `dvc pull` of the `.dvc` files the job needs, at `COMMIT`, from the DVC remote on
+  the storage into the cache of the clone in the scratch, so the job reads them from the node's disk and its data are
+  those of its commit. Data missing in the remote (not pushed) end the job at once, before the work.
 - Results go to a folder on the storage (an absolute path), the scratch is cleaned at the end.

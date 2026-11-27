@@ -26,6 +26,10 @@ cd "$SCRATCHDIR/repo"
 git checkout --quiet --detach "$COMMIT"
 echo "job $PBS_JOBID on $(hostname -f): commit $COMMIT"
 
+# TODO: only for a project with DVC (otherwise delete): the data of COMMIT the job needs, from the DVC remote on the
+# storage into the cache of the clone in the scratch (count them in scratch_local above)
+# uv run dvc pull data/<data>.dvc
+
 # TODO: your command; results to a folder on the storage (an absolute path), the scratch is cleaned at the end
 results=/storage/plzen1/home/$USER/results/$EXPERIMENT
 mkdir -p "$results"
