@@ -20,11 +20,14 @@ if (( ${#f[@]} != 7 )); then
 fi
 id=${f[0]} state=${f[1]} host=${f[2]%%[:+]*} out_path=${f[3]#*:} err_path=${f[4]#*:} join=${f[5]} exit_status=${f[6]}
 
-# with `qsub -j oe` the errors are in the output
-joined=0
+# with `qsub -j oe` the errors are in the output, with `-j eo` the output is in the errors
+joined=""
 if [[ $stream == err && $join == oe ]]; then
-    joined=1
+    joined="the job joins its errors into its output (-j oe), showing the output"
     stream=out
+elif [[ $stream == out && $join == eo ]]; then
+    joined="the job joins its output into its errors (-j eo), showing the errors"
+    stream=err
 fi
 
 case $state in
@@ -44,8 +47,8 @@ if [[ -n $exit_status ]]; then
     echo "  exit     $exit_status"
 fi
 echo
-if (( joined )); then
-    echo "the job joins its errors into its output (-j oe), showing the output"
+if [[ -n $joined ]]; then
+    echo "$joined"
 fi
 case $state in
     R)

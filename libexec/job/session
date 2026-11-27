@@ -40,9 +40,11 @@ while getopts "c:g:hl:m:q:s:w:" opt; do
     esac
 done
 (( OPTIND > $# )) || usage
-for number in "$cpus" "$mem" "$scratch" "$gpus" "$hours"; do
-    [[ $number =~ ^[0-9]+$ ]] || usage
+# whole numbers, only the GPUs may be 0 (qsub would refuse the rest after the confirmation)
+for number in "$cpus" "$mem" "$scratch" "$hours"; do
+    [[ $number =~ ^[1-9][0-9]*$ ]] || usage
 done
+[[ $gpus =~ ^[0-9]+$ ]] || usage
 
 select="select=1:ncpus=$cpus:ngpus=$gpus:mem=${mem}gb:scratch_local=${scratch}gb$extra"
 # named after the project (the repository, or the folder outside one) so that qstat shows which session is which; PBS

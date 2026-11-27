@@ -32,7 +32,7 @@ if [[ -z $id ]]; then
             continue
         fi
         if [[ ${f[0]%%[:+]*} == "$host" && ${f[1]} == session-* ]]; then
-            workdir=$(grep -o 'PBS_O_WORKDIR=[^,]*' <<< "${f[2]}" | cut -d= -f2 || true)
+            workdir=$(tr ',' '\n' <<< "${f[2]}" | sed -n 's/^PBS_O_WORKDIR=//p')
             ids+=("$job")
             labels+=("$job  ${f[1]}  $workdir")
         fi
@@ -82,12 +82,13 @@ fi
 if [[ $job_host != "$host" ]]; then
     exec ssh -t "$job_host" "$job_cmd" shell "$id"
 fi
+# a variable of the job: Variable_List is NAME=value,NAME=value,…
 var() {
-    grep -o "$1=[^,]*" <<< "${f[2]}" | cut -d= -f2 || true
+    tr ',' '\n' <<< "${f[2]}" | sed -n "s/^$1=//p"
 }
 home=$(var PBS_O_HOME) workdir=$(var PBS_O_WORKDIR)
-export HOME=${home:-$HOME} SCRATCHDIR PBS_JOBID=$id   # PBS_JOBID as in a batch job (job info without an id)
 SCRATCHDIR=$(var SCRATCHDIR)
+export HOME=${home:-$HOME} SCRATCHDIR PBS_JOBID=$id   # PBS_JOBID as in a batch job (job info without an id)
 # ssh (also of scp, rsync, git) reads ~/.ssh of the home in passwd, the node's own one, not of HOME: that one links to
 # ~/.ssh of HOME, so all of them use the keys, config and known_hosts of the frontend (docs/ssh.md). Made
 # here when missing; an existing ~/.ssh there stays, it may hold something.

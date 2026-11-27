@@ -21,6 +21,17 @@ fi
 file=${1:-$HOME/.bashrc}
 dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
+# a block without its end line would make the sed below delete the rest of the file
+if [[ -f $file ]]; then
+    starts=$(grep -c '^# >>> metaenv >>>$' "$file" || true)
+    ends=$(grep -c '^# <<< metaenv <<<$' "$file" || true)
+    old=$(grep -c '^#\( #\)\? metaenv stuff' "$file" || true)   # the old block starts and ends with this line
+    if (( starts != ends || old % 2 )); then
+        echo "install.sh: a metaenv block in $file lacks its start or end line, fix it by hand first" >&2
+        exit 1
+    fi
+fi
+
 tmp=$(mktemp)
 trap 'rm -f "$tmp"' EXIT
 {
